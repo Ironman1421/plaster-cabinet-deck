@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="A working manual for fine-tuning open models with Thinking Machines Lab's Tinker API: eighteen plaster plates, ray-marched live, each turnable by hand.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="The Plaster Cabinet">
+<meta property="og:title" content="The Plaster Cabinet">
+<meta property="og:description" content="A working manual for fine-tuning open models with Thinking Machines Lab's Tinker API: eighteen plaster plates, ray-marched live, each turnable by hand.">
+<meta property="og:url" content="https://ironman1421.github.io/plaster-cabinet-deck/">
+<meta property="og:image" content="https://ironman1421.github.io/plaster-cabinet-deck/img/preview.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Title slide: Tinker, cast in plaster">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The Plaster Cabinet">
+<meta name="twitter:description" content="A working manual for fine-tuning open models with Thinking Machines Lab's Tinker API: eighteen plaster plates, ray-marched live, each turnable by hand.">
+<meta name="twitter:image" content="https://ironman1421.github.io/plaster-cabinet-deck/img/preview.jpg">
+<link rel="apple-touch-icon" href="img/preview-square.jpg">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>The Plaster Cabinet</title>
+<style>
+@font-face{font-family:'Cormorant Fb';src:local('Times New Roman'),local('Times'),local('Liberation Serif');size-adjust:90%;ascent-override:96%;descent-override:30%;line-gap-override:0%}
+:root{
+  --paper:#CBCDD2; --paper-2:#BFC2C8; --ink:#16181E; --ink-2:#343741; --ink-3:#555965;
+  --terra:#7D1F35; --terra-2:#5A1424; --rule:rgba(22,24,30,.2);
+  --slab:#16181E; --slab-ink:#E6E8EC;
+  --serif:'Cormorant','Cormorant Fb','Cormorant Garamond','Garamond','Times New Roman',serif;
+  --sans:'Albert Sans','Helvetica Neue','Segoe UI',Arial,sans-serif;
+  --mono:'Cutive Mono','SFMono-Regular',Menlo,Consolas,monospace;
+  --safe-l:env(safe-area-inset-left,0px); --safe-r:env(safe-area-inset-right,0px); --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+  --gut:calc(max(5vw,1.6rem) + var(--safe-l));
+}
+*{box-sizing:border-box}
+html{font-size:clamp(15px,.62vw + .9vh,24px)}
+html,body{margin:0;height:100%;overflow:hidden;background:#CBCDD2;color:var(--ink)}
+body{font-family:var(--sans);font-size:1rem;line-height:1.5;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+/* the stage: where the plaster lives */
+.stage{position:fixed;top:0;bottom:0;right:0;left:40vw;z-index:0}
+#gl{width:100%;height:100%;display:block;cursor:grab;opacity:0;transition:opacity .9s ease .2s;touch-action:none;-webkit-user-select:none;user-select:none}
+#gl.live{opacity:1}
+#gl.drag{cursor:grabbing}
+#gl.pick{cursor:crosshair}
+#fallback{opacity:0;transition:opacity .35s ease;pointer-events:none}
+.fb-on #fallback{opacity:1}
+#fallback svg{display:block;width:100%;height:100%}
+.gl-live #fallback{opacity:0!important}
+.nogl #gl{display:none}
+.deck{position:fixed;inset:0;z-index:2;pointer-events:none}
+.slide{position:absolute;inset:0;visibility:hidden}
+.slide.on,.slide.off{visibility:visible}
+.plate{position:absolute;left:var(--gut);top:max(7vh,2.2rem);width:min(40vw,44rem);max-height:calc(100% - max(7vh,2.2rem) - 7.2rem - var(--safe-b));overflow-y:auto;overflow-x:hidden;pointer-events:auto;padding-right:.6rem;scrollbar-width:thin;scrollbar-color:rgba(22,24,30,.25) transparent}
+.slide.wide .plate{width:min(49vw,54rem)}
+.slide.dense .plate{transform:scale(.86);transform-origin:0 0;width:calc(min(40vw,44rem)/.86);max-height:calc((100% - max(7vh,2.2rem) - 7.2rem - var(--safe-b))/.86)}
+.slide.dense.wide .plate{width:calc(min(49vw,54rem)/.86)}
+.plate.scrolls{-webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 3.4rem),transparent);mask-image:linear-gradient(180deg,#000 calc(100% - 3.4rem),transparent)}
+.plate.scrolls.end{-webkit-mask-image:none;mask-image:none}
+.plate::-webkit-scrollbar{width:5px}.plate::-webkit-scrollbar-thumb{background:rgba(22,24,30,.22)}
+.slide:not(.on) .plate{pointer-events:none}
+.plate>*{opacity:0}
+.slide.on .plate>*{animation:rise .85s cubic-bezier(.2,.7,.1,1) both;animation-delay:calc(var(--i,0) * 60ms + 360ms)}
+.slide.off .plate>*{animation:sink .38s ease-in both}
+.slide.instant .plate>*{animation:none;opacity:1}
+@keyframes rise{from{opacity:0;transform:translateY(.9rem);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes sink{from{opacity:1;transform:none;filter:none}to{opacity:0;transform:translateY(-.6rem);filter:blur(4px)}}
+/* more-below marker for plates that scroll */
+.more{position:fixed;z-index:4;left:var(--gut);bottom:calc(6.1rem + var(--safe-b));font-family:var(--serif);font-style:italic;font-weight:600;font-size:.86rem;color:var(--terra-2);opacity:0;transition:opacity .4s;pointer-events:none}
+.more.show{opacity:1}
+.more::after{content:"";display:inline-block;width:.42em;height:.42em;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:translateY(-.22em) rotate(45deg);margin-left:.5em;animation:nod 1.8s ease-in-out infinite}
+@keyframes nod{50%{transform:translateY(.02em) rotate(45deg)}}
+
+h1,h2{font-family:var(--serif);font-weight:600;letter-spacing:-.008em;line-height:.98;margin:0 0 .36em;font-optical-sizing:auto;text-wrap:balance}
+h1{font-size:min(7.1rem,8.3vw);line-height:.9;margin-bottom:.3em}
+h1 i,h2 i{font-weight:500;color:var(--terra-2)}
+h2{font-size:3.25rem}
+h3{font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.3rem;margin:1em 0 .25em;color:var(--ink)}
+p{margin:0 0 .8em;max-width:38em;text-wrap:pretty}
+.lede{font-size:1.24rem;line-height:1.42;color:var(--ink-2);font-weight:500}
+.lede b{color:var(--ink);font-weight:650}
+.small{font-size:.82rem;color:var(--ink-3);line-height:1.46}
+.note{font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.02rem;line-height:1.35;color:var(--ink-3);margin-top:.9em}
+a{color:var(--terra-2);text-decoration-thickness:1px;text-underline-offset:3px}
+code,.mono{font-family:var(--mono);font-size:.86em}
+p code,li code,td code{background:rgba(125,31,53,.09);padding:.05em .3em;color:var(--terra-2);overflow-wrap:anywhere}
+.ledger{list-style:none;margin:.4em 0 1em;padding:0;border-top:1px solid var(--ink)}
+.ledger li{display:grid;grid-template-columns:minmax(7em,30%) 1fr;gap:1em;padding:.55em 0;border-bottom:1px solid var(--rule);font-size:.92rem;line-height:1.42}
+.ledger li>span:first-child{font-family:var(--serif);font-style:italic;font-weight:600;color:var(--ink-2);font-size:1.1rem;line-height:1.22}
+.ledger li>span:first-child code{font-style:normal;font-weight:400;font-size:.76em;background:none;padding:0}
+.ledger.wide li{grid-template-columns:minmax(10em,40%) 1fr;padding:.4em 0}
+.ledger li[data-bar]{cursor:default;transition:background .25s}
+.ledger li[data-bar].lit,.numbered li[data-bar].lit{background:linear-gradient(90deg,rgba(125,31,53,.1),rgba(125,31,53,0))}
+.numbered{list-style:none;margin:.5em 0 1em;padding:0;counter-reset:n;border-top:1px solid var(--ink)}
+.numbered li{counter-increment:n;position:relative;padding:.55em 0 .55em 2.7em;border-bottom:1px solid var(--rule);font-size:.92rem;line-height:1.44}
+.numbered li::before{content:counter(n);position:absolute;left:.1em;top:.2em;font-family:var(--serif);font-size:1.75rem;line-height:1;color:var(--terra);font-weight:600}
+.numbered li b{font-weight:650}
+table.prices{border-collapse:collapse;width:100%;font-size:.82rem;margin:.3em 0 .5em}
+table.prices th{font-family:var(--serif);font-style:italic;font-weight:600;text-align:right;color:var(--ink-3);padding:.25em .4em;border-bottom:1px solid var(--ink);font-size:.95rem}
+table.prices th:first-child,table.prices td:first-child{text-align:left}
+table.prices td{padding:.3em .4em;border-bottom:1px solid var(--rule);text-align:right;font-variant-numeric:tabular-nums}
+table.prices tbody tr{cursor:pointer;transition:background .2s}
+table.prices tbody tr.sel td{color:var(--terra-2);font-weight:650}
+table.prices tbody tr:hover,table.prices tbody tr.sel{background:linear-gradient(90deg,rgba(125,31,53,.1),rgba(125,31,53,.02))}
+pre{margin:.5em 0 1em;background:var(--slab);color:var(--slab-ink);font-family:var(--mono);font-size:max(.72rem,11.5px);line-height:1.58;padding:.9rem 1.05rem;overflow-x:auto;tab-size:4;-webkit-overflow-scrolling:touch;position:relative;box-shadow:0 1.1rem 1.6rem -1.2rem rgba(22,24,30,.55)}
+pre .fn{color:#E6B9C3}pre .str{color:#C3CAD8}pre .kw{color:#98A3B6}pre .com{color:#878C99;font-style:italic}pre .num{color:#E9D7B4}pre .cmd{color:#F2F3F5}
+pre[data-file]::before{content:attr(data-file);display:block;font-family:var(--serif);font-style:italic;font-weight:600;font-size:.95rem;color:#9A9FAB;margin:-.2rem 0 .45rem;position:sticky;left:0}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:0 1.6rem}
+.ctl{display:flex;align-items:center;gap:.8rem;margin:.45em 0 .2em;flex-wrap:wrap}
+#prices .ctl{margin:.1em 0}#prices h3{margin-top:.5em}
+.ctl label{font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.1rem;color:var(--ink-2);min-width:6.2em}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1;min-width:8rem;height:30px;background:transparent;cursor:pointer;touch-action:none;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--ink)}
+input[type=range]::-moz-range-track{height:2px;background:var(--ink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;margin-top:-11px;background:radial-gradient(circle at 35% 30%,#E7BFC8,#7D1F35 60%,#2E0A14);box-shadow:0 2px 5px rgba(0,0,0,.35)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:radial-gradient(circle at 35% 30%,#E7BFC8,#7D1F35 60%,#2E0A14)}
+input[type=range]:focus-visible{outline:1px dashed var(--terra);outline-offset:2px}
+.ticks{display:flex;justify-content:space-between;font-family:var(--serif);font-size:.9rem;font-weight:600;color:var(--ink-3);margin:-.35em 12px .3em calc(6.2em + .8rem + 12px);font-variant-numeric:lining-nums}
+.ticks span{width:0;display:flex;justify-content:center;white-space:nowrap}
+.readout{font-family:var(--serif);font-size:2.3rem;line-height:1;font-weight:600;font-variant-numeric:lining-nums}
+.readout small{font-family:var(--sans);font-size:.8rem;color:var(--ink-3);display:block;margin-top:.4em;font-weight:400;line-height:1.4}
+.switch{display:inline-flex;gap:0;margin:.3em 0 .6em;border-bottom:1px solid var(--ink)}
+.switch button{font:inherit;font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.14rem;background:none;border:0;color:var(--ink-3);padding:.3em .9em .32em;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent}
+.switch button[aria-pressed=true]{color:var(--ink)}
+.switch button::after{content:"";position:absolute;left:.6em;right:.6em;bottom:-2px;height:3px;background:var(--terra);transform:scaleX(0);transition:transform .3s cubic-bezier(.3,.7,.2,1)}
+.switch button[aria-pressed=true]::after{transform:none}
+select{font:inherit;font-size:.86rem;background:transparent;border:0;border-bottom:1px solid var(--ink);padding:.2em 1.4em .2em 0;color:var(--ink);border-radius:0;-webkit-appearance:none;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--ink) 50%),linear-gradient(135deg,var(--ink) 50%,transparent 50%);background-position:calc(100% - 9px) 55%,calc(100% - 4px) 55%;background-size:5px 5px;background-repeat:no-repeat;max-width:100%}
+.tokens{display:grid;grid-template-columns:auto repeat(12,minmax(0,1fr));gap:3px;margin:.6em 0 .4em;font-family:var(--mono);font-size:.7rem}
+.tokens .rh{font-family:var(--serif);font-style:italic;font-weight:600;font-size:.92rem;color:var(--ink-3);padding-right:.5em;align-self:center;white-space:nowrap}
+.tokens .t{padding:.45em .05em;text-align:center;background:rgba(22,24,30,.07);overflow:hidden;white-space:nowrap;transition:background .25s,color .25s;cursor:default}
+.tokens .t.w1{background:rgba(125,31,53,.17);color:var(--terra-2)}
+.tokens .t.wv{background:none;font-family:var(--serif);font-size:.95rem;font-weight:600}
+.tokens .t.wv.w1{color:var(--terra)}
+.tokens .t.hot{background:var(--ink);color:var(--paper)}
+.cycles{margin:.5em 0 .2em;width:100%;height:auto;display:block}
+.cycles text{font-family:var(--serif);font-style:italic;font-weight:600;font-size:15px;fill:var(--ink-3)}
+/* catalogue strip: navigation */
+#strip{position:fixed;z-index:5;left:var(--gut);width:min(40vw,44rem);bottom:calc(1.05rem + var(--safe-b));display:flex;align-items:flex-end;gap:.6rem;pointer-events:none}
+#label{flex:1;min-width:0;border-top:1px solid var(--ink);padding-top:.42rem;display:flex;align-items:baseline;gap:.7rem}
+#label .no{font-family:var(--serif);font-size:2rem;line-height:1;font-weight:600;color:var(--terra-2);white-space:nowrap;font-variant-numeric:lining-nums}
+#label .ttl{font-family:var(--serif);font-style:italic;font-weight:600;font-size:1.08rem;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .25s}
+#label .ttl.peek{color:var(--terra-2)}
+#curve{pointer-events:auto;width:15.5rem;height:4rem;flex:none;overflow:visible;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+#curve .path{fill:none;stroke:var(--ink);stroke-width:1.1}
+#curve .done{fill:none;stroke:var(--terra);stroke-width:2.2;stroke-linecap:round;transition:stroke-dashoffset .7s cubic-bezier(.3,.7,.2,1)}
+#curve .shade{fill:rgba(22,24,30,.055)}
+#curve .pt{fill:var(--paper);stroke:var(--ink);stroke-width:1;transition:r .2s}
+#curve .pt.past{fill:var(--terra);stroke:var(--terra)}
+#curve .pt.peek{r:4.4}
+#curve .bead{fill:url(#beadg);filter:drop-shadow(0 1.5px 1.5px rgba(0,0,0,.35));transition:cx .7s cubic-bezier(.3,.7,.2,1),cy .7s cubic-bezier(.3,.7,.2,1)}
+#curve .axis{font-family:var(--serif);font-style:italic;font-weight:600;font-size:12.5px;fill:var(--ink-3)}
+.navbtn{pointer-events:auto;background:none;border:0;font-family:var(--serif);font-size:2.7rem;line-height:1;color:var(--ink);cursor:pointer;padding:0 .35rem .42rem;transition:color .2s,transform .2s;-webkit-tap-highlight-color:transparent}
+.navbtn:hover{color:var(--terra)}.navbtn:active{transform:scale(.9)}
+.navbtn:disabled{color:rgba(22,24,30,.22);cursor:default}
+.navbtn:focus-visible,.switch button:focus-visible{outline:1px dashed var(--terra);outline-offset:2px}
+#tag{position:fixed;z-index:3;right:calc(max(3vw,1.2rem) + var(--safe-r));bottom:calc(1.15rem + var(--safe-b));width:min(27rem,34vw);text-align:right;font-family:var(--serif);font-style:italic;font-weight:600;font-size:.98rem;line-height:1.34;color:var(--ink-2);pointer-events:none;transition:opacity .45s,transform .45s;border-top:1px solid var(--ink);padding-top:.5rem;text-wrap:pretty}
+#tag b{font-style:normal;font-weight:700;color:var(--terra-2);letter-spacing:.01em;margin-right:.2em}
+#tag .do{display:block;color:var(--terra-2);margin-top:.15em}
+#tag.fade{opacity:0;transform:translateY(.4rem)}
+.nogl #tag .do{display:none}
+.kbd{font-family:var(--mono);font-size:.82em;border-bottom:1px solid var(--ink-3);padding:0 .2em}
+.cover-sub{font-family:var(--serif);font-style:italic;font-weight:500;font-size:1.72rem;color:var(--ink-2);line-height:1.22;margin:.1em 0 1em;max-width:19em}
+.byline{font-size:.88rem;color:var(--ink-2);border-top:1px solid var(--ink);padding-top:.8em;max-width:31em}
+.src{font-size:.8rem;line-height:1.45;columns:2;column-gap:1.6rem;padding-left:1.1em;margin:.3em 0}
+.src li{break-inside:avoid;margin-bottom:.5em}
+.big-eq{font-family:var(--serif);font-weight:600;font-size:2.7rem;margin:.15em 0 .35em;white-space:nowrap;font-variant-numeric:lining-nums}
+.big-eq i{color:var(--terra-2)}
+.big-eq .pw{color:#6B717C;font-style:italic}
+.big-eq sub,.big-eq sup{font-size:.5em}
+.reduced .plate>*{animation-duration:.01s!important;animation-delay:0s!important}
+
+/* ---------- portrait ---------- */
+@media (max-aspect-ratio:1/1){
+  html{font-size:15.5px}
+  :root{--gut:calc(18px + var(--safe-l))}
+  .stage{left:0;right:0;top:0;bottom:auto;height:43vh}
+  .slide.dense .plate{transform:none}
+  .plate,.slide.wide .plate,.slide.dense .plate,.slide.dense.wide .plate{left:var(--gut);right:calc(14px + var(--safe-r));width:auto;top:39.5vh;max-height:calc(60.5vh - 5.4rem - var(--safe-b));padding-right:4px}
+  h1{font-size:min(4.3rem,17.5vw);margin-bottom:.22em}
+  h2{font-size:min(2.2rem,8.6vw)}
+  .cover-sub{font-size:1.24rem;margin-bottom:.8em}
+  .lede{font-size:1.08rem}
+  .ledger li{grid-template-columns:minmax(6.2em,31%) 1fr;gap:.7em}
+  .ledger.wide li{grid-template-columns:1fr;gap:.1em}
+  .ledger li>span:first-child{font-size:1.02rem}
+  .cols{grid-template-columns:1fr}
+  pre{font-size:11.6px;padding:.75rem .8rem}
+  #strip{left:calc(14px + var(--safe-l));right:calc(8px + var(--safe-r));width:auto;bottom:calc(8px + var(--safe-b));gap:4px}
+  #label .no{font-size:1.6rem}#label .ttl{font-size:.9rem}
+  #curve{width:9.4rem;height:3.5rem}
+  #curve .axis{display:none}
+  .navbtn{font-size:2.6rem;padding:0 .5rem .35rem}
+  .more{bottom:calc(4.6rem + var(--safe-b));left:auto;right:calc(16px + var(--safe-r))}
+  #tag{top:calc(8px + var(--safe-t));bottom:auto;left:var(--gut);right:calc(14px + var(--safe-r));width:auto;text-align:left;font-size:.84rem;line-height:1.28;border-top:0;padding-top:0}
+  #tag .t2{display:none}
+  .src{columns:1}
+  table.prices th:nth-child(2),table.prices td:nth-child(2),table.prices th:nth-child(3),table.prices td:nth-child(3){display:none}
+  .tokens{font-size:9.5px;grid-template-columns:repeat(12,minmax(0,1fr));gap:2px}.tokens .rh{grid-column:1/-1;font-size:.82rem;padding:3px 0 0}.tokens .t{padding:.5em 0}
+  .big-eq{font-size:2.05rem}
+  .readout{font-size:1.9rem}
+  .ticks{font-size:.78rem}
+}
+/* ---------- phone landscape / short screens ---------- */
+@media (min-aspect-ratio:1/1) and (max-height:560px){
+  html{font-size:13.6px}
+  :root{--gut:calc(max(3vw,18px) + var(--safe-l))}
+  .stage{left:52vw}
+  .slide.dense .plate{transform:none}
+  .plate,.slide.wide .plate,.slide.dense .plate,.slide.dense.wide .plate{top:calc(12px + var(--safe-t));width:calc(52vw - var(--gut));max-height:calc(100% - 12px - var(--safe-t) - 4.6rem - var(--safe-b))}
+  h1{font-size:4.2rem}h2{font-size:2.15rem}
+  .cover-sub{font-size:1.3rem;margin-bottom:.7em}
+  .ledger li,.numbered li{padding-top:.38em;padding-bottom:.38em}
+  pre{font-size:11.2px;padding:.7rem .8rem}
+  #strip{bottom:calc(5px + var(--safe-b));width:calc(52vw - var(--gut))}
+  #curve{width:11rem;height:3.2rem}#curve .axis{display:none}
+  .more{bottom:calc(4rem + var(--safe-b));left:auto;right:49vw}
+  #tag{width:40vw;font-size:.9rem;bottom:calc(8px + var(--safe-b))}
+  #tag .t2{display:none}
+  .src{columns:1}
+}
+@media (prefers-reduced-motion:reduce){
+  .plate>*{animation-duration:.01s!important;animation-delay:0s!important}
+  #curve .bead,#curve .done{transition:none}
+  .more::after{animation:none}
+}
+</style>
+<script>(function(){var l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400..700;1,400..700&family=Albert+Sans:ital,wght@0,400..700;1,400..700&family=Cutive+Mono&display=swap';document.head.appendChild(l);})();</script>
+
+<div class="stage" id="fallback" aria-hidden="true"></div>
+<div class="stage"><canvas id="gl" aria-hidden="true"></canvas></div>
+
+<main class="deck" id="deck">
+
+<!-- I -->
+<section class="slide on instant" id="cover" data-title="Fine-tuning, cast in plaster" data-tag="A loss surface on a plinth, with an optimiser rolling down it." data-tag2="Plaster, garnet contour lines, a pewter bead. A drawn illustration, not a real model's loss." data-do="Drag to turn it. Tap the surface to drop the bead somewhere else.">
+ <div class="plate">
+  <h1 style="--i:0">Tinker,<br><i>cast in plaster</i></h1>
+  <p class="cover-sub" style="--i:1">A working manual for fine-tuning open models with Thinking Machines Lab's training API, checked against its documentation on 16 November 2026.</p>
+  <p class="byline" style="--i:2">Eighteen plates. Each is a plaster model, ray-marched live by one GLSL shader on your graphics card, and each can be turned by hand. Move between plates with the <span class="kbd">←</span> <span class="kbd">→</span> keys, a swipe, or the loss curve below.</p>
+ </div>
+</section>
+
+<!-- II -->
+<section class="slide" id="what" data-title="What Tinker is" data-tag="Your machine on the small plinth, their racks on the large one." data-tag2="Garnet beads are batches going out; pewter beads are losses and samples coming back.">
+ <div class="plate">
+  <h2 style="--i:0">You write the loop.<br><i>They run the GPUs.</i></h2>
+  <p class="lede" style="--i:1">Tinker is a cloud training API. Your Python training loop runs on your own CPU machine. Each call ships a batch to Thinking Machines' GPU clusters, which run the forward pass, the backward pass and the optimiser step on a <b>LoRA adapter</b> of an open-weight model.</p>
+  <ul class="ledger" style="--i:2">
+   <li><span>Model sizes</span><span>LoRA training from 1B to over 1T parameters, dense and Mixture-of-Experts, text and vision.</span></li>
+   <li><span>Training methods</span><span>Supervised fine-tuning, reinforcement learning (GRPO, PPO), DPO and distillation. Write your own loop or use the cookbook's.</span></li>
+   <li><span>Catalogue</span><span>39 entries on the pricing page on 16 November 2026, long-context variants counted separately: Inkling, Nemotron, GLM, Kimi, Qwen, gpt-oss and DeepSeek.</span></li>
+   <li><span>What you keep</span><span>Checkpoints you can sample on Tinker, or download and merge into an ordinary Hugging Face model.</span></li>
+  </ul>
+ </div>
+</section>
+
+<!-- III -->
+<section class="slide" id="when" data-title="When to fine-tune" data-tag="Four plaster steps, from least work to most: prompt, retrieve, fine-tune, reinforce." data-do="Point at a rule and the bead climbs to its step.">
+ <div class="plate">
+  <h2 style="--i:0">Fine-tune for <i>behaviour,</i><br>not for facts</h2>
+  <ul class="numbered" style="--i:1" id="ladder">
+   <li data-bar="0"><b>Prompt first.</b> If a good system prompt and a few examples get you there, stop. Nothing to train, nothing to host.</li>
+   <li data-bar="1"><b>Retrieve when the gap is knowledge.</b> Prices, policies and documents change. Retrieval-augmented generation (RAG) updates an index, not weights.</li>
+   <li data-bar="2"><b>Fine-tune when the gap is behaviour.</b> A voice, a strict format, a narrow skill, a classifier, or a long prompt you resend on every call. Tinker's <i>prompt distillation</i> recipe trains a model to act as if that prompt were present.</li>
+   <li data-bar="3"><b>Reinforce when you can score but can't write the answer.</b> If a program can grade an output (tests pass, the maths checks out), RL learns from those grades.</li>
+  </ul>
+  <p class="note" style="--i:2">This ladder is our editorial rule of thumb, not Tinker documentation. The reason LoRA suits the third and fourth steps is Thinking Machines' own: post-training data is small and narrow, so low-rank capacity is often enough.</p>
+ </div>
+</section>
+
+<!-- IV -->
+<section class="slide" id="lora" data-title="LoRA in one equation" data-tag="The frozen matrix W lies below. Above it floats what you train: B (garnet, d × r), A (pewter, r × k) and their product, a thin garnet cast the size of W." data-tag2="The relief is a sum of r ridge patterns, one per rank. Illustration." data-do="Drag the rank: B and A widen, and the cast can hold more detail.">
+ <div class="plate">
+  <h2 style="--i:0">Freeze <i>W</i>.<br>Learn two thin matrices.</h2>
+  <div class="big-eq" style="--i:1">W′ = W + <sup>α</sup>⁄<sub>r</sub> · <i>B</i>·<span class="pw">A</span></div>
+  <p style="--i:2">Low-Rank Adaptation keeps every original weight fixed. For each weight matrix it trains <i>B</i> (d × r) and <i>A</i> (r × k), where the rank r is small. Tinker's default rank is 32, and Thinking Machines' experiments keep α = 32.</p>
+  <div class="ctl" style="--i:3"><label for="rank">Rank r</label><input id="rank" type="range" min="0" max="7" step="1" value="5" aria-label="LoRA rank"></div>
+  <div class="ticks" style="--i:3" aria-hidden="true"><span>1</span><span>2</span><span>4</span><span>8</span><span>16</span><span>32</span><span>64</span><span>128</span></div>
+  <div class="readout" style="--i:4" id="rankOut">r = 32 · 4.18 B<small>trainable parameters on Inkling 2 Small, all layers: 0.70 % of its 594 B</small></div>
+  <p class="small" style="--i:5">Count = r × 130,618,176, the per-rank LoRA parameter count in the cookbook's <code>hyperparam_utils.py</code> for Inkling 2 Small (MLP 128.07 M + attention 2.35 M + unembedding 0.21 M). Per pass, LoRA needs a little over ⅔ of full fine-tuning's arithmetic, and one worker pool can train many adapters on one shared base model.</p>
+ </div>
+</section>
+
+<!-- V -->
+<section class="slide" id="lora-rules" data-title="Five LoRA rules" data-tag="Gradient descent on the plaster surface. The inked line is the path the bead takes at the step size you chose." data-tag2="Toy surface, toy units." data-do="Move the step size, or tap the surface to start the bead from there.">
+ <div class="plate">
+  <h2 style="--i:0">Five rules for LoRA<br><i>that save a week</i></h2>
+  <ol class="numbered" style="--i:1">
+   <li><b>Raise the learning rate about 10×</b> over what full fine-tuning would use. The cookbook's helper returns exactly 10, and the best rate does not depend on rank. Reusing a full fine-tuning rate makes LoRA look worse than it is.</li>
+   <li><b>Adapt every layer,</b> especially the MLP and MoE layers. Attention-only LoRA underperforms, even at matched parameter count.</li>
+   <li><b>RL needs little capacity.</b> LoRA matched full fine-tuning on RL even at rank 1 in Thinking Machines' tests.</li>
+   <li><b>Big supervised datasets need more rank.</b> A rough rule: LoRA parameters ≥ the number of completion tokens you train on.</li>
+   <li><b>Avoid huge batches.</b> LoRA pays a loss penalty at large batch sizes, and more rank doesn't fix it.</li>
+  </ol>
+  <div class="ctl" style="--i:2"><label for="lr">Step size</label><input id="lr" type="range" min="0" max="100" value="56" aria-label="Learning rate on the toy surface"></div>
+  <p class="small" style="--i:3" id="lrOut">0.50: the bead reaches the deep basin.</p>
+ </div>
+</section>
+
+<!-- VI -->
+<section class="slide" id="split" data-title="How Tinker splits the work" data-tag="A worker pool: twelve GPU columns rising and falling in lock-step." data-tag2="The coloured rings stand for adapters from different customers sharing one clock. Your laptop sits in front.">
+ <div class="plate">
+  <h2 style="--i:0">One pool, one clock,<br><i>many adapters</i></h2>
+  <p class="lede" style="--i:1">When you create a training client, Tinker assigns your job to a <b>worker pool</b>: machines that run forward-backward passes over and over, in lock-step.</p>
+  <ul class="ledger" style="--i:2">
+   <li><span>Your machine</span><span>Holds the data, the loop, the reward code and the decisions. Needs no GPU.</span></li>
+   <li><span>Their pool</span><span>Each <i>clock cycle</i> runs one forward-backward pass and one optimiser step, covering several LoRA models, often from different users.</span></li>
+   <li><span>Why share</span><span>The hardware stays busy even when your batch is small or your loop is idle, and small batches often learn more per example.</span></li>
+   <li><span>What it means</span><span>A step takes the same time for a big or a small batch, so small batches aren't faster. You pay only for the compute you use.</span></li>
+  </ul>
+ </div>
+</section>
+
+<!-- VII -->
+<section class="slide" id="cycles" data-title="Submit first, await later" data-tag="Twelve trays, one per clock cycle; the pewter bead is the clock. A garnet block is a cycle doing your work, an empty tray is a cycle you waited through." data-do="Switch the loop style and count the blocks.">
+ <div class="plate">
+  <h2 style="--i:0">Submit first,<br><i>await later</i></h2>
+  <p style="--i:1">Every call returns a <i>future</i> at once. The work lands in the next clock cycle that has room. How you await decides how many cycles one training step costs.</p>
+  <div class="switch" role="group" aria-label="Loop style" style="--i:2">
+   <button data-cyc="3" aria-pressed="false">Naive</button><button data-cyc="2" aria-pressed="false">Overlapped</button><button data-cyc="1" aria-pressed="true">Pipelined</button>
+  </div>
+  <svg class="cycles" style="--i:3" id="cycSvg" viewBox="0 0 600 84" role="img" aria-label="Clock cycle timeline"></svg>
+  <p class="small" style="--i:4" id="cycOut"></p>
+<pre style="--i:5" data-file="a pipelined loop, after Tinker's SDK cheatsheet" class="py">fwdbwd = training_client.forward_backward(batch1, "cross_entropy")
+optim  = training_client.optim_step(types.AdamParams(learning_rate=1e-4))
+nxt    = training_client.forward_backward(batch2, "cross_entropy")
+fwdbwd_result = await fwdbwd     # all three were queued first
+await optim
+next_result = await nxt</pre>
+ </div>
+</section>
+
+<!-- VIII -->
+<section class="slide dense" id="api" data-title="The core API" data-tag="Eight instruments on eight pedestals, one per call. The pewter bead visits them in the order a run does, circling between forward_backward and optim_step." data-do="Point at a call to cast its instrument in garnet.">
+ <div class="plate">
+  <h2 style="--i:0">Eight calls<br><i>carry the whole API</i></h2>
+  <ul class="ledger wide" style="--i:1" id="calls">
+   <li data-bar="0"><span><code>ServiceClient()</code></span><span>Entry point. Reads <code>TINKER_API_KEY</code>.</span></li>
+   <li data-bar="1"><span><code>create_lora_training_client</code></span><span>Pick <code>base_model</code> and <code>rank</code>. Returns a TrainingClient.</span></li>
+   <li data-bar="2"><span><code>forward_backward(data, loss_fn)</code></span><span>Computes and accumulates gradients. Loss is <code>"cross_entropy"</code> or an RL loss.</span></li>
+   <li data-bar="3"><span><code>optim_step(AdamParams)</code></span><span>Applies the gradients with Adam.</span></li>
+   <li data-bar="4"><span><code>sample(prompt, num_samples, …)</code></span><span>Generates text from a SamplingClient.</span></li>
+   <li data-bar="5"><span><code>compute_logprobs(prompt)</code></span><span>Scores tokens without generating.</span></li>
+   <li data-bar="6"><span><code>save_weights_for_sampler</code></span><span>Weights only, for sampling and export.</span></li>
+   <li data-bar="7"><span><code>save_state</code></span><span>Weights plus optimiser state, for resuming.</span></li>
+  </ul>
+<pre style="--i:2" data-file="the quickstart loop" class="py">import tinker
+service = tinker.ServiceClient()
+trainer = await service.create_lora_training_client(
+    base_model="Qwen/Qwen3.5-4B", rank=16)
+
+for step in range(10):
+    fb  = trainer.forward_backward(training_data, "cross_entropy")
+    opt = trainer.optim_step(tinker.AdamParams(learning_rate=2e-4))
+    await fb
+    await opt
+
+sampler = await trainer.save_weights_and_get_sampling_client()</pre>
+ </div>
+</section>
+
+<!-- IX -->
+<section class="slide" id="data" data-title="Data format" data-tag="Thirteen plaster tokens. Each arc is one prediction, from a token to the next. Garnet arcs carry weight 1 and are trained on; hairline arcs carry weight 0." data-do="Switch train_on_what and watch the weights rise.">
+ <div class="plate">
+  <h2 style="--i:0">One line of JSONL<br><i>per conversation</i></h2>
+<pre style="--i:1" data-file="faq.jsonl, one object per line" class="json">{"messages": [
+  {"role": "user", "content": "Do you ship to Rome?"},
+  {"role": "assistant", "content": "Yes, 5–8 days."}]}</pre>
+  <p style="--i:2">A <i>renderer</i> turns messages into the model's own chat tokens. The cookbook then builds a <code>Datum</code>: the input is tokens[:-1], the target is tokens[1:], and a weight says which targets count. Position i predicts token i + 1.</p>
+  <div class="switch" role="group" aria-label="train_on_what" style="--i:3"><button data-tow="asst" aria-pressed="true">Assistant messages</button><button data-tow="all" aria-pressed="false">All tokens</button></div>
+  <div class="tokens" style="--i:4" id="tokGrid" aria-label="Illustrative tokens and weights"></div>
+  <p class="small" style="--i:5">Illustrative tokens, not a real tokenizer's split. <code>train_on_what</code> sets the weights: <code>ALL_ASSISTANT_MESSAGES</code> (the <code>sl_basic</code> recipe's choice), <code>ALL_TOKENS</code>, and also <code>LAST_ASSISTANT_MESSAGE</code>, <code>ALL_MESSAGES</code>, <code>CUSTOMIZED</code> and others.</p>
+ </div>
+</section>
+
+<!-- X -->
+<section class="slide dense" id="sl-rl" data-title="Supervised or reinforcement" data-tag="Supervised: one bead follows the slope it is shown. Reinforcement: a group of eight samples scatters around the policy; the redder ones scored better, and the policy moves toward them." data-do="Switch between the two.">
+ <div class="plate">
+  <h2 style="--i:0">Show it the answer,<br><i>or score its attempts</i></h2>
+  <div class="switch" role="group" aria-label="Learning mode" style="--i:1"><button data-mode="sl" aria-pressed="true">Supervised</button><button data-mode="rl" aria-pressed="false">Reinforcement</button></div>
+  <div class="cols" style="--i:2">
+   <div>
+    <h3>Supervised (SL)</h3>
+    <p class="small" style="color:var(--ink-2)">You supply the target text. Loss <code>cross_entropy</code>, inputs <code>target_tokens</code> and <code>weights</code>. It learns in proportion to the tokens you show it.</p>
+   </div>
+   <div>
+    <h3>Reinforcement (RL)</h3>
+    <p class="small" style="color:var(--ink-2)">You supply prompts and a reward function. Sample a group per prompt, score each, and set advantage = reward minus the group's average. Losses: <code>importance_sampling</code>, <code>ppo</code>, <code>cispo</code>, <code>dro</code>, <code>gspo</code>, and <code>stable_reinforce</code> (alpha).</p>
+   </div>
+  </div>
+<pre style="--i:3" data-file="an RL datum, after the SDK cheatsheet" class="py">types.Datum(
+    model_input=types.ModelInput.from_ints(tokens=seq[:-1]),
+    loss_fn_inputs=dict(
+        target_tokens=seq[1:],
+        logprobs=[0.0]*n_prefix + sampling_logprobs,   # from the sampler
+        advantages=[0.0]*n_prefix + advantages))       # 0 masks a position</pre>
+  <p class="small" style="--i:4">Why RL fits tiny adapters: a policy-gradient episode teaches roughly one bit, while supervised learning teaches in proportion to its tokens (<i>LoRA Without Regret</i>).</p>
+ </div>
+</section>
+
+<!-- XI -->
+<section class="slide dense" id="checkpoints" data-title="Sample, evaluate, export" data-tag="The descent with checkpoints set along it: four pewter crystals, each a saved state you can sample, resume or download.">
+ <div class="plate">
+  <h2 style="--i:0">Sample, evaluate,<br><i>take the weights home</i></h2>
+  <ul class="ledger wide" style="--i:1">
+   <li><span><code>save_state</code></span><span>Weights and optimiser state, at <code>tinker://&lt;run&gt;/weights/&lt;name&gt;</code>. Use it to resume.</span></li>
+   <li><span><code>save_weights_for_sampler</code></span><span>Weights only, at <code>…/sampler_weights/&lt;name&gt;</code>. Sample it, or open it in the Playground.</span></li>
+   <li><span><code>save_weights_external</code></span><span>Weights for use outside Tinker, at <code>…/external_weights/&lt;name&gt;</code>. Download with signed URLs or the CLI.</span></li>
+  </ul>
+  <p style="--i:2">Mid-run, <code>save_weights_and_get_sampling_client()</code> gives you a sampler on the current weights. The beta OpenAI-compatible endpoint accepts a <code>tinker://…/sampler_weights/…</code> path as the model name. The cookbook's <code>run_benchmark</code> covers suites such as GSM8K, IFEval, MBPP, LiveCodeBench, SWE-bench and Terminal-Bench.</p>
+<pre style="--i:3" data-file="export, then serve anywhere" class="sh">tinker checkpoint download tinker://&lt;run_id&gt;/external_weights/step-100 --output ./models/
+# or merge a LoRA adapter into a plain Hugging Face model in Python:
+#   weights.build_hf_model(base_model=..., adapter_path=..., output_path="./merged_model")
+vllm serve ./merged_model</pre>
+  <p class="small" style="--i:4">Storage is free up to 100 GB or 100 checkpoints per organisation, whichever comes first (since 4 November 2026). On the paid plan all of it costs $0.10 per GB per month. With no TTL a checkpoint is kept until you delete it; <code>ttl_seconds</code> sets an expiry.</p>
+ </div>
+</section>
+
+<!-- XII -->
+<section class="slide dense" id="inkling" data-title="Inkling 2 Small" data-tag="A Mixture-of-Experts: a router at the centre and a ring of 32 experts. On each beat two experts light for the current token." data-tag2="Illustration: the real model's expert count isn't shown here.">
+ <div class="plate">
+  <h2 style="--i:0">Inkling 2 Small,<br><i>eleven days old</i></h2>
+  <p class="lede" style="--i:1">Thinking Machines' newest model, announced 5 November 2026 and trainable on Tinker from day one. Only <b>17 B of its 594 B</b> parameters run for each token, about 2.9 %.</p>
+  <ul class="ledger" style="--i:2">
+   <li><span>Architecture</span><span>Mixture-of-Experts, 594 B total, 17 B active. Text and image input (292 M-parameter vision encoder), variable effort. No audio.</span></li>
+   <li><span>Weights</span><span>Open since 12 November 2026: on Hugging Face as <code>thinkingmachines/Inkling-2-Small</code>. The launch post promised an Apache 2.0 licence.</span></li>
+   <li><span>Training on Tinker</span><span>$1.50 per million tokens at 64 K context, $3.00 at 256 K. Same ID on Tinker as on Hugging Face.</span></li>
+   <li><span>Serverless (beta)</span><span>$0.30 input, $0.03 cached input, $1.00 output per million tokens, 256 K context. Steadier throughput is by waitlist.</span></li>
+   <li><span>Elsewhere</span><span>Runs in vLLM, SGLang and Unsloth; hosted by NVIDIA, Fireworks, Together, Baseten, Nebius, Modal and Cloudflare (12 November update).</span></li>
+   <li><span>Their claims</span><span>Artificial Analysis Intelligence Index 31. Learns faster than earlier Inkling models on the same data: it matched Inkling-Small's final score on a financial-summarisation task in 75 steps. Known weak spots: wordy, weaker at chat layout, picks tools poorly in big codebases.</span></li>
+  </ul>
+ </div>
+</section>
+
+<!-- XIII -->
+<section class="slide dense" id="prices" data-title="Base models and prices" data-tag="Plaster columns, one per model; height is the training price per million tokens on a log scale. The garnet capital marks the model in the calculator." data-do="Tap a row to price your run on that model.">
+ <div class="plate">
+  <h2 style="--i:0">Pick a base model<br><i>by size and price</i></h2>
+  <table class="prices" style="--i:1" id="priceTable">
+   <thead><tr><th>Model (context)</th><th>Total / active</th><th>Prefill</th><th>Sample</th><th>Train</th></tr></thead>
+   <tbody></tbody>
+  </table>
+  <p class="small" style="--i:2">US dollars per million tokens, nine of the 39 entries on Tinker's pricing page, 16 November 2026. Cached prefill is cheaper. MoE models are priced by active parameters. Long-context (peft) variants cost more to train only.</p>
+  <h3 style="--i:3">What would my run cost?</h3>
+  <div class="ctl" style="--i:4"><label for="cModel">Model</label><select id="cModel" aria-label="Model"></select></div>
+  <div class="ctl" style="--i:5"><label for="cEx">Examples</label><input id="cEx" type="range" min="50" max="5000" step="50" value="300"><span class="mono" id="cExO">300</span></div>
+  <div class="ctl" style="--i:6"><label for="cTok">Tokens each</label><input id="cTok" type="range" min="100" max="4000" step="50" value="250"><span class="mono" id="cTokO">250</span></div>
+  <div class="ctl" style="--i:7"><label for="cEp">Epochs</label><input id="cEp" type="range" min="1" max="5" step="1" value="3"><span class="mono" id="cEpO">3</span></div>
+  <div class="readout" style="--i:8" id="cOut">$0.33<small>Estimate: examples × tokens × epochs × train price. Our assumption is that every token is billed at the train rate. Sampling for evals is billed on top.</small></div>
+ </div>
+</section>
+
+<!-- XIV -->
+<section class="slide dense" id="gotchas" data-title="Gotchas" data-tag="The bead caught in a shallow basin, a local minimum, while the deep one lies beyond the ridge." data-do="Tap the surface to see where else a timid step gets stuck.">
+ <div class="plate">
+  <h2 style="--i:0">Where runs<br><i>get stuck</i></h2>
+  <ol class="numbered" style="--i:1">
+   <li><b>Awaiting every call.</b> Submit-then-wait costs 2 to 3 clock cycles per step; pipelined submission costs 1.</li>
+   <li><b>Your own timeouts and retries.</b> Don't wrap <code>sample()</code> in <code>asyncio.wait_for</code> or add retry loops. The SDK already retries, and a slow minute is normal because Tinker is tuned for throughput, not latency.</li>
+   <li><b>The wrong learning rate.</b> LoRA wants about 10× a full fine-tune's. The cookbook's <code>get_lr</code> raises <code>NotImplementedError</code> for Inkling models, so sweep the rate yourself.</li>
+   <li><b>A mismatched renderer.</b> Take the tokenizer and the renderer from the model name, as the cookbook's <code>model_info.get_recommended_renderer_name</code> does, for training and for sampling alike.</li>
+   <li><b>Extra keys in RL data.</b> The RL losses accept exactly <code>target_tokens</code>, <code>logprobs</code> and <code>advantages</code>. Sending <code>weights</code> too is rejected by the server.</li>
+   <li><b>Vanishing checkpoints.</b> The cookbook's periodic saves default to a 7-day TTL; only the final one is kept indefinitely. On the free storage plan a session stops once you pass 100 GB or 100 checkpoints.</li>
+   <li><b>No payment method.</b> Add billing details before your first train or sample call.</li>
+  </ol>
+ </div>
+</section>
+
+<!-- XV -->
+<section class="slide" id="project" data-title="First project: your FAQ" data-tag="Your dataset as a stack of plaster cards, one conversation each. On the lifted card the question is inked and the answer is garnet, because only the answer is trained on.">
+ <div class="plate">
+  <h2 style="--i:0">First project:<br><i>teach it your FAQ</i></h2>
+  <p style="--i:1">Goal: a model that answers questions the way David does: his facts, his tone, his length. Collect 200 to 500 real question-and-answer pairs from emails, a help page or your writing. That count is our suggestion for a first run, not a Tinker requirement.</p>
+<pre style="--i:2" data-file="1 · install and sign in" class="sh">uv init faq-tune &amp;&amp; cd faq-tune
+uv add tinker tinker-cookbook
+uv run tinker auth login        # or: export TINKER_API_KEY=...</pre>
+<pre style="--i:3" data-file="2 · faq.jsonl, one conversation per line" class="json">{"messages": [{"role": "system", "content": "Answer as David: brief, warm, exact."},
+  {"role": "user", "content": "How long does a first draft take?"},
+  {"role": "assistant", "content": "About a week. I'll send a rough cut by day three."}]}</pre>
+  <p class="small" style="--i:4">Set up payment on the Billing page before first use. Keep 30 pairs back as a test set, and write 20 fresh questions for the final check on Plate XVII.</p>
+ </div>
+</section>
+
+<!-- XVI -->
+<section class="slide dense wide" id="train" data-title="Train the adapter" data-tag="Your adapter setting: the garnet cast starts flat and takes on relief as the run proceeds, over the frozen base." data-tag2="Illustration of a three-epoch run on a loop.">
+ <div class="plate">
+  <h2 style="--i:0">Then train it: <i>one file</i></h2>
+<pre style="--i:1" data-file="3 · train_faq.py, built from the cookbook's sl_basic recipe" class="py">import asyncio
+from tinker_cookbook import cli_utils, model_info
+from tinker_cookbook.renderers import TrainOnWhat
+from tinker_cookbook.supervised import train
+from tinker_cookbook.supervised.data import FromConversationFileBuilder
+from tinker_cookbook.supervised.types import ChatDatasetBuilderCommonConfig
+
+MODEL = "Qwen/Qwen3.5-9B-Base"
+renderer = model_info.get_recommended_renderer_name(MODEL)
+
+data = FromConversationFileBuilder(
+    file_path="faq.jsonl", test_size=30,        # hold 30 out for test/nll
+    common_config=ChatDatasetBuilderCommonConfig(
+        model_name_for_tokenizer=MODEL, renderer_name=renderer,
+        max_length=4096, batch_size=16,
+        train_on_what=TrainOnWhat.ALL_ASSISTANT_MESSAGES))
+
+config = train.Config(
+    log_path=cli_utils.runs_path("faq-sft"), model_name=MODEL,
+    recipe_name="faq_sft", renderer_name=renderer, dataset_builder=data,
+    learning_rate=2e-4, lora_rank=32, num_epochs=3,
+    eval_every=5, save_every=10)
+
+asyncio.run(train.main(config))</pre>
+  <p class="small" style="--i:2">Run <code>uv run python train_faq.py</code>. Logs and checkpoint paths land in <code>~/tinker-runs/faq-sft</code>. At 300 examples × 250 tokens × 3 epochs on Qwen3.5-9B-Base ($1.463/M), training costs about $0.33 (our estimate). To try Inkling 2 Small, set <code>MODEL = "thinkingmachines/Inkling-2-Small"</code> and choose the learning rate yourself.</p>
+ </div>
+</section>
+
+<!-- XVII -->
+<section class="slide dense wide" id="evaluate" data-title="Prove it learned" data-tag="Two casts of one form. Left, the base model. Right, the same base under a thin garnet shell: your adapter, the only part that changed.">
+ <div class="plate">
+  <h2 style="--i:0">Then prove <i>it learned</i></h2>
+  <ol class="numbered" style="--i:1">
+   <li><b>Watch the held-out loss.</b> With <code>test_size=30</code> the run logs <code>test/nll</code> every 5 steps. It should fall, then flatten. If training loss keeps falling while test loss rises, it's memorising: stop earlier or add data.</li>
+   <li><b>Ask new questions.</b> Put your 20 fresh questions and ideal answers in <code>faq_heldout.jsonl</code>, then sample base and tuned side by side.</li>
+   <li><b>Grade with a rubric.</b> Facts right? Sounds like you? Right length? Would you send it unedited? Count the yeses for each model.</li>
+  </ol>
+<pre style="--i:2" data-file="compare.py: base and tuned, side by side" class="py">import asyncio, json, tinker
+from tinker import types
+from tinker_cookbook import cli_utils, model_info, renderers
+from tinker_cookbook.checkpoint_utils import load_checkpoints_file
+from tinker_cookbook.tokenizer_utils import get_tokenizer
+
+MODEL = "Qwen/Qwen3.5-9B-Base"
+r = renderers.get_renderer(model_info.get_recommended_renderer_name(MODEL),
+                           get_tokenizer(MODEL))
+tuned_path = load_checkpoints_file(cli_utils.runs_path("faq-sft"))[-1].sampler_path
+
+async def main():
+    service = tinker.ServiceClient()
+    models = {"base":  await service.create_sampling_client(base_model=MODEL),
+              "tuned": await service.create_sampling_client(model_path=tuned_path)}
+    params = types.SamplingParams(max_tokens=300, temperature=0.7,
+                                  stop=r.get_stop_sequences())
+    for line in open("faq_heldout.jsonl"):
+        msgs = json.loads(line)["messages"]
+        prompt = r.build_generation_prompt(msgs[:-1])
+        print("Q:", msgs[-2]["content"])
+        for name, client in models.items():
+            out = await client.sample(prompt=prompt, num_samples=1, sampling_params=params)
+            print(f"  {name}:", r.parse_response(out.sequences[0].tokens)[0]["content"])
+        print("  you: ", msgs[-1]["content"])
+
+asyncio.run(main())</pre>
+  <p class="small" style="--i:3">Happy with it? Download the sampler weights with <code>weights.download(...)</code>, merge with <code>weights.build_hf_model(...)</code> and serve with <code>vllm serve ./merged_model</code>. The merge needs the same base model you trained from. Inkling 2 Small's base weights reached Hugging Face on 12 November, but the export guide doesn't mention Inkling yet, so test that path before you rely on it (our caution).</p>
+ </div>
+</section>
+
+<!-- XVIII -->
+<section class="slide" id="sources" data-title="Sources" data-tag="The cabinet at closing time, lit low from the side. Every model in this deck is one fragment shader, morphing between signed-distance fields.">
+ <div class="plate">
+  <h2 style="--i:0">Sources,<br><i>read 16 November 2026</i></h2>
+  <ul class="src" style="--i:1">
+   <li><a href="https://thinkingmachines.ai/news/inkling-2-small" target="_blank" rel="noopener">Inkling 2 Small announcement</a>, Thinking Machines Lab, 5 Nov 2026, updated 12 Nov</li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/" target="_blank" rel="noopener">Tinker documentation home</a> and <a href="https://tinker-docs.thinkingmachines.ai/changelog/" target="_blank" rel="noopener">changelog</a></li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/tinker/quickstart/" target="_blank" rel="noopener">Quickstart</a> and <a href="https://tinker-docs.thinkingmachines.ai/tinker/sdk-cheatsheet/" target="_blank" rel="noopener">SDK cheatsheet</a></li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/" target="_blank" rel="noopener">Models &amp; Pricing</a> and <a href="https://tinker-docs.thinkingmachines.ai/administration/checkpoint-storage-pricing/" target="_blank" rel="noopener">checkpoint storage pricing</a></li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/tinker/lora-primer/" target="_blank" rel="noopener">LoRA primer</a> and <a href="https://thinkingmachines.ai/blog/lora/" target="_blank" rel="noopener">LoRA Without Regret</a></li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/tinker/under-the-hood/" target="_blank" rel="noopener">Clock cycles &amp; pipelining</a></li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/tinker/howto/checkpoints/" target="_blank" rel="noopener">Checkpoints</a> and <a href="https://tinker-docs.thinkingmachines.ai/tinker/losses/" target="_blank" rel="noopener">loss functions</a></li>
+   <li><a href="https://tinker-docs.thinkingmachines.ai/inference/openai/overview/" target="_blank" rel="noopener">OpenAI-compatible API (beta)</a></li>
+   <li>Cookbook: <a href="https://tinker-docs.thinkingmachines.ai/cookbook/inkling/" target="_blank" rel="noopener">using Inkling</a>, <a href="https://tinker-docs.thinkingmachines.ai/cookbook/eval/benchmarks-guide/" target="_blank" rel="noopener">benchmarks guide</a>, <a href="https://tinker-docs.thinkingmachines.ai/cookbook/deployment/export-hf/" target="_blank" rel="noopener">merge into a Hugging Face model</a></li>
+   <li><a href="https://github.com/thinking-machines-lab/tinker-cookbook" target="_blank" rel="noopener">tinker-cookbook on GitHub</a>: <code>sl_basic.py</code>, <code>supervised/train.py</code>, <code>supervised/data.py</code>, <code>hyperparam_utils.py</code>, <code>checkpoint_utils.py</code>, <code>renderers/base.py</code></li>
+  </ul>
+  <p class="note" style="--i:2">Colophon. Set in Cormorant, Albert Sans and Cutive Mono. Drawn by one hand-written WebGL2 fragment shader: sphere-traced signed-distance fields with soft shadows, ambient occlusion, a subsurface term for the plaster and a depth-of-field pass. No 3D library.</p>
+ </div>
+</section>
+
+</main>
+
+<div class="more" id="more" aria-hidden="true">more below</div>
+<div id="tag" aria-live="polite"></div>
+<nav id="strip" aria-label="Plates">
+ <div id="label"><span class="no" id="lblNo">I</span><span class="ttl" id="lblTtl">Fine-tuning, cast in plaster</span></div>
+ <button class="navbtn" id="prev" aria-label="Previous plate" disabled>‹</button>
+ <svg id="curve" viewBox="0 0 300 74" role="group" aria-label="Loss curve navigator: one point per plate"></svg>
+ <button class="navbtn" id="next" aria-label="Next plate">›</button>
+</nav>
+
+<script>
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const root=document.documentElement;
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if(reduced) root.classList.add('reduced');
+const coarse = matchMedia('(pointer:coarse)').matches;
+const FLOOR=-1.3, TOP=-1.06;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let cur=-1, needRender=true;
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+const easeOut=t=>1-Math.pow(1-t,3);
+
+/* ---------------- toy loss surface (mirrors the shader) ---------------- */
+function H(x,z){let h=0.09*(x*x+z*z);h+=0.24*Math.sin(1.3*x+0.4)*Math.cos(1.1*z-0.3);h+=0.07*Math.sin(2.7*x-1.1)*Math.sin(2.3*z+0.7);const dx=x-1.0,dz=z-0.8;h-=1.25*Math.exp(-(dx*dx+dz*dz)/1.7);return h;}
+const SY=(x,z)=>0.8*H(x,z)+0.15;
+function grad(x,z){const e=1e-3;return[(SY(x+e,z)-SY(x-e,z))/(2*e),(SY(x,z+e)-SY(x,z-e))/(2*e)];}
+function descend(lr,sx,sz,n){let x=sx,z=sz;const P=[[x,z]];for(let i=0;i<n;i++){const g=grad(x,z);x-=lr*g[0];z-=lr*g[1];const r=Math.hypot(x,z);if(r>2.75){x*=2.75/r;z*=2.75/r}P.push([x,z]);}return P;}
+
+/* ---------------- plate table ---------------- */
+// scenes: 0 surface, 1 lora, 2 split, 3 pool, 4 trays, 5 steps, 6 instruments, 7 tokens, 8 moe, 9 columns, 10 cards, 11 forms
+const START=[-2.1,-1.4];
+const S = {
+ cover:      {scene:0, yaw:0.75, pitch:0.5, R:3.85, tgt:[0,-0.2,0], path:{lr:0.5}},
+ what:       {scene:2, yaw:0.55, pitch:0.4, R:3.3, tgt:[-0.2,-0.2,0.1]},
+ when:       {scene:5, yaw:-0.55, pitch:0.36, R:3.0, tgt:[0,-0.15,0], hi:2},
+ lora:       {scene:1, yaw:0.66, pitch:0.6, R:3.35, tgt:[-0.1,-0.55,-0.1]},
+ 'lora-rules':{scene:0, yaw:-0.35, pitch:0.82, R:3.95, tgt:[0,-0.25,0], path:{lr:'slider'}},
+ split:      {scene:3, yaw:0.42, pitch:0.46, R:3.2, tgt:[0,-0.45,0.4]},
+ cycles:     {scene:4, yaw:-0.3, pitch:0.4, R:3.25, tgt:[0,-0.75,0]},
+ api:        {scene:6, yaw:0, pitch:0.36, R:3.15, tgt:[0,-0.55,0.2], hi:-1},
+ data:       {scene:7, yaw:0.26, pitch:0.36, R:3.25, tgt:[0,-0.6,0]},
+ 'sl-rl':    {scene:0, yaw:1.1, pitch:0.62, R:4.0, tgt:[0,-0.25,0], path:{lr:0.5}, rl:true},
+ checkpoints:{scene:0, yaw:2.3, pitch:0.5, R:3.95, tgt:[0,-0.2,0], path:{lr:0.5}, crystals:1},
+ inkling:    {scene:8, yaw:0.3, pitch:0.56, R:3.3, tgt:[0,-0.6,0]},
+ prices:     {scene:9, yaw:-0.42, pitch:0.32, R:3.1, tgt:[0,-0.15,0]},
+ gotchas:    {scene:0, yaw:-1.2, pitch:0.52, R:3.85, tgt:[-0.2,-0.25,-0.1], path:{lr:0.08}},
+ project:    {scene:10, yaw:0.55, pitch:0.36, R:2.25, tgt:[0,-0.25,0]},
+ train:      {scene:1, yaw:-0.62, pitch:0.4, R:3.3, tgt:[0,-0.55,0], train:true},
+ evaluate:   {scene:11, yaw:0.2, pitch:0.26, R:3.0, tgt:[0,-0.1,0]},
+ sources:    {scene:0, yaw:3.6, pitch:0.4, R:4.1, tgt:[0,-0.25,0], path:{lr:0.5}, crystals:1, late:true}
+};
+const slides=$$('.slide'); const N=slides.length;
+const roman=n=>{const m=[[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];let s='';for(const[v,r]of m)while(n>=v){s+=r;n-=v}return s};
+
+/* ---------------- uniforms state + tiny tween engine ---------------- */
+const U={from:0,to:0,t:1,rank:5/7,train:1,bead:[0,0,0],trail:new Float32Array(48),trailN:0,trailProg:0,
+  group:new Float32Array(24),groupR:new Float32Array(8),groupOn:0,crystals:0,bars:new Float32Array(9),barN:9,hi:-1,hiPos:2,
+  tok:new Float32Array(12),ck:new Float32Array(12),tokHover:-1,mode:1,beads:3,e1:0,e2:7,az:0,el:0.86,warm:0};
+const tweens=new Map();
+function tw(key,to,dur,get,set){ if(reduced||dur<=0){set(to);tweens.delete(key);needRender=true;return;} tweens.set(key,{from:get(),to,t0:performance.now(),dur,set}); }
+const twU=(k,to,dur)=>tw(k,to,dur,()=>U[k],v=>U[k]=v);
+function runTweens(now){ if(!tweens.size)return; for(const [k,w] of tweens){const u=clamp((now-w.t0)/w.dur,0,1);w.set(w.from+(w.to-w.from)*ease(u));if(u>=1)tweens.delete(k);} needRender=true; }
+
+/* ---------------- prices (Tinker pricing page, 16 Nov 2026) ---------------- */
+const PRICES=[
+ ['GPT-OSS-20B (32K)','21B / 3.6B',0.18,0.45,0.396],
+ ['Qwen3-8B (32K)','8B / 8B',0.195,0.60,0.44],
+ ['GPT-OSS-120B (32K)','117B / 5B',0.33,0.84,0.737],
+ ['Qwen3.6-35B-A3B (64K)','35B / 3B',0.45,1.335,1.177],
+ ['Qwen3.5-9B-Base (64K)','9B / 9B',0.30,0.807,1.463],
+ ['Inkling 2 Small (64K)','594B / 17B',0.30,1.00,1.50],
+ ['Kimi-K2.6 (32K)','1T / 32B',2.205,5.49,4.84],
+ ['DeepSeek-V4.1-Flash (256K)','552B / 16B',0.60,3.60,4.98],
+ ['Kimi-K3.1-Pro (256K)','2.8T / 104B',6.00,25.00,32.00]
+];
+const fmt$=v=>'$'+(Math.abs(v*100-Math.round(v*100))<1e-9?v.toFixed(2):String(v));
+const barH=p=>0.3+0.47*Math.log(1+p*2);
+const BARS=PRICES.map(r=>barH(r[4]));
+let priceSel=4;
+(function buildPrices(){
+  const tb=$('#priceTable tbody'), sel=$('#cModel');
+  PRICES.forEach((r,i)=>{const tr=document.createElement('tr');tr.dataset.bar=i;
+    tr.innerHTML=`<td>${r[0]}</td><td>${r[1]}</td><td>${fmt$(r[2])}</td><td>${fmt$(r[3])}</td><td>${fmt$(r[4])}</td>`;tb.appendChild(tr);
+    const o=document.createElement('option');o.value=i;o.textContent=`${r[0]}: ${fmt$(r[4])}/M`;sel.appendChild(o);});
+  sel.value=priceSel;
+  const upd=()=>{const ex=+$('#cEx').value,tk=+$('#cTok').value,ep=+$('#cEp').value;priceSel=+sel.value;const p=PRICES[priceSel][4];
+    $('#cExO').textContent=ex;$('#cTokO').textContent=tk;$('#cEpO').textContent=ep;
+    const tokens=ex*tk*ep, cost=tokens/1e6*p;
+    $('#cOut').firstChild.nodeValue=(cost<10?'$'+cost.toFixed(2):'$'+Math.round(cost).toLocaleString('en-US'))+' · '+(tokens/1e6).toFixed(2)+' M tokens';
+    tb.querySelectorAll('tr').forEach((tr,i)=>tr.classList.toggle('sel',i===priceSel));
+    if(cur>=0&&slides[cur].id==='prices'){U.hi=priceSel;needRender=true;}};
+  ['#cEx','#cTok','#cEp','#cModel'].forEach(s=>$(s).addEventListener('input',upd)); sel.addEventListener('change',upd);
+  tb.addEventListener('click',e=>{const tr=e.target.closest('tr');if(tr){sel.value=tr.dataset.bar;upd();}});
+  tb.addEventListener('pointerover',e=>{const tr=e.target.closest('tr');if(tr&&e.pointerType==='mouse'){U.hi=+tr.dataset.bar;needRender=true;}});
+  tb.addEventListener('pointerleave',()=>{U.hi=priceSel;needRender=true;});
+  S.prices.init=upd;
+})();
+
+/* ---------------- token grid ---------------- */
+const TOK=['‹u›','Do','you','ship','to','Rome','?','‹a›','Yes',',','5–8','days','‹/›'];
+const TWS={asst:[0,0,0,0,0,0,0,1,1,1,1,1],all:[1,1,1,1,1,1,1,1,1,1,1,1]};
+let towMode='asst';
+function setTow(mode,instant){
+  towMode=mode; const w=TWS[mode];
+  $$('[data-tow]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.tow===mode));
+  const g=$('#tokGrid');
+  g.querySelectorAll('.t').forEach(t=>{ if(t.dataset.row==='in')return; const c=+t.dataset.c; t.classList.toggle('w1',!!w[c]); if(t.dataset.row==='w')t.textContent=w[c]; });
+  w.forEach((v,i)=>tw('tok'+i,v,instant?0:500+i*45,()=>U.tok[i],x=>U.tok[i]=x));
+}
+(function(){
+  const g=$('#tokGrid');let h='<span class="rh">input</span>';
+  for(let i=0;i<12;i++)h+=`<span class="t" data-row="in" data-c="${i}">${TOK[i]}</span>`;
+  h+='<span class="rh">target</span>';for(let i=0;i<12;i++)h+=`<span class="t" data-row="tg" data-c="${i}">${TOK[i+1]}</span>`;
+  h+='<span class="rh">weight</span>';for(let i=0;i<12;i++)h+=`<span class="t wv" data-row="w" data-c="${i}">0</span>`;
+  g.innerHTML=h;
+  const hot=c=>{g.querySelectorAll('.t').forEach(t=>t.classList.toggle('hot',c!=null&&t.dataset.c===c&&!t.classList.contains('wv')));U.tokHover=c==null?-1:+c;needRender=true;};
+  g.addEventListener('pointerover',e=>{const c=e.target.dataset&&e.target.dataset.c;if(c!=null)hot(c);});
+  g.addEventListener('pointerdown',e=>{const c=e.target.dataset&&e.target.dataset.c;if(c!=null)hot(c);});
+  g.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')hot(null);});
+  $$('[data-tow]').forEach(b=>b.addEventListener('click',()=>setTow(b.dataset.tow)));
+  setTow('asst',true);
+})();
+
+/* ---------------- code highlighting (tiny, hand-written) ---------------- */
+$$('pre').forEach(pre=>{
+  const src=pre.textContent; const lang=pre.className;
+  const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let re;
+  if(lang==='py') re=/(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(import|from|for|in|async|await|def|return|as|if|else|with|range|print|open|None|True|False)\b|\b(\d+(?:\.\d+)?(?:e-?\d+)?)\b|([A-Za-z_][\w]*)(?=\()/g;
+  else if(lang==='sh') re=/(#[^\n]*)|("(?:[^"\\\n]|\\.)*")|\b(uv|tinker|vllm|cd|export|python)\b|()()/g;
+  else re=/()("(?:[^"\\\n]|\\.)*")(?=\s*:)|()()()/g;
+  let out='',last=0;src.replace(re,(m,com,str,kw,num,fn,off)=>{
+    if(!m)return m; out+=esc(src.slice(last,off));
+    const cls=com?'com':str?(lang==='json'?'fn':'str'):kw?(lang==='sh'?'cmd':'kw'):num?'num':'fn';
+    out+=`<span class="${cls}">${esc(m)}</span>`; last=off+m.length; return m;});
+  out+=esc(src.slice(last));
+  pre.innerHTML=out;
+});
+
+/* ---------------- descent path ---------------- */
+let P=null, pathT0=0, curLR=0.5; const pathLen=40;
+const starts={};
+function setPath(id){
+  const cfg=S[id].path; if(!cfg)return;
+  const lr = cfg.lr==='slider'? curLR : cfg.lr; const s=starts[id]||START;
+  P=descend(lr,s[0],s[1],pathLen);
+  for(let i=0;i<16;i++){const k=Math.round(i*pathLen/15);const p=P[Math.min(k,pathLen)];U.trail[i*3]=p[0];U.trail[i*3+1]=SY(p[0],p[1]);U.trail[i*3+2]=p[1];}
+  { // checkpoints at even distances along the path
+    const cum=[0];for(let i=1;i<P.length;i++)cum.push(cum[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));
+    [0.16,0.4,0.64,0.88].forEach((f,k)=>{const want=f*cum[cum.length-1];let i=1;while(i<cum.length-1&&cum[i]<want)i++;const u=(want-cum[i-1])/Math.max(1e-6,cum[i]-cum[i-1]);const x=P[i-1][0]+(P[i][0]-P[i-1][0])*u,z=P[i-1][1]+(P[i][1]-P[i-1][1])*u;U.ck[k*3]=x;U.ck[k*3+1]=SY(x,z);U.ck[k*3+2]=z;});
+  }
+  U.trailN=16; pathT0=performance.now(); needRender=true;
+}
+function beadAt(now){
+  if(!P)return;
+  const dur=5.2, hold=2.4; let s=(Math.max(0,now-pathT0-500)/1000)%(dur+hold); s=Math.min(1,s/dur); if(reduced)s=1;
+  const e=1-Math.pow(1-s,2.2); const f=e*pathLen; const i=Math.min(pathLen-1,Math.floor(f)); const fr=f-i;
+  const x=P[i][0]+(P[i+1][0]-P[i][0])*fr, z=P[i][1]+(P[i+1][1]-P[i][1])*fr;
+  U.bead=[x,SY(x,z)+0.13,z]; U.trailProg=f;
+}
+function pathVerdict(){
+  const end=P[P.length-1], y=SY(end[0],end[1]); const a=P[P.length-2], b=P[P.length-3];
+  const osc=Math.hypot(end[0]-a[0],end[1]-a[1])>0.25||Math.hypot(end[0]-b[0],end[1]-b[1])>0.25;
+  if(osc)return 'the step is too big to settle, so the bead keeps bouncing between the walls.';
+  if(y<-0.5)return 'the bead reaches the deep basin.';
+  return 'too timid: the bead settles in the first shallow dip it meets.';
+}
+/* RL group: a tiny evolution-strategy-style policy update on the toy surface */
+let rl={m:START.slice(),t0:0,k:0}, rlMode='sl';
+function rlStep(now){
+  const per=1.25; const k=Math.floor((now-rl.t0)/1000/per);
+  if(k!==rl.k){ rl.k=k;
+    if(k>0){let rs=[];for(let i=0;i<8;i++)rs.push(-SY(U.group[i*3],U.group[i*3+2]));const mu=rs.reduce((a,b)=>a+b)/8;let sd=Math.sqrt(rs.reduce((a,b)=>a+(b-mu)*(b-mu),0)/8)+1e-6;let dx=0,dz=0;for(let i=0;i<8;i++){const a=(rs[i]-mu)/sd;dx+=a*(U.group[i*3]-rl.m[0]);dz+=a*(U.group[i*3+2]-rl.m[1]);}rl.m[0]+=0.32*dx/8;rl.m[1]+=0.32*dz/8;
+      if(Math.hypot(rl.m[0]-1,rl.m[1]-0.8)<0.25||k%22===0){rl.m=START.slice();}}
+    const rs=[];for(let i=0;i<8;i++){const a=Math.random()*6.283,r=Math.sqrt(Math.random())*0.75;let x=rl.m[0]+Math.cos(a)*r,z=rl.m[1]+Math.sin(a)*r;const rr=Math.hypot(x,z);if(rr>2.75){x*=2.75/rr;z*=2.75/rr;}U.group[i*3]=x;U.group[i*3+1]=SY(x,z)+0.085;U.group[i*3+2]=z;rs.push(-SY(x,z));}
+    const lo=Math.min(...rs),hi=Math.max(...rs);for(let i=0;i<8;i++)U.groupR[i]=(rs[i]-lo)/(hi-lo+1e-6);
+  }
+  U.bead=[rl.m[0],SY(rl.m[0],rl.m[1])+0.13,rl.m[1]];
+}
+/* instruments: the bead visits the calls in the order a run makes them */
+const SEQ=[0,1,2,3,2,3,2,3,4,5,6,7];
+const instrPos=i=>{const a=(i-3.5)*0.36;return [Math.sin(a)*2.3,FLOOR+1.66,1.6-Math.cos(a)*2.3];};
+let apiHover=-1, apiAt=-1;
+function litList(sel,k){$$(sel+' [data-bar]').forEach(li=>li.classList.toggle('lit',+li.dataset.bar===k));}
+function instrStep(time){
+  const tt=reduced?2.0:time*0.9; const k=Math.floor(tt)%SEQ.length, f=tt-Math.floor(tt);
+  const a=instrPos(SEQ[k]), b=instrPos(SEQ[(k+1)%SEQ.length]); const e=ease(clamp((f-0.45)/0.55,0,1));
+  U.bead=[a[0]+(b[0]-a[0])*e,a[1]+Math.sin(Math.PI*e)*0.32,a[2]+(b[2]-a[2])*e];
+  const at=e<0.5?SEQ[k]:SEQ[(k+1)%SEQ.length];
+  if(apiHover<0){ U.hi=at; if(at!==apiAt){apiAt=at;litList('#calls',at);} }
+}
+
+/* ---------------- camera ---------------- */
+const cam={yaw:0.75,pitch:0.5,R:3.75,tgt:[0,-0.2,0]}; let camFrom=null, camTo=null, camT0=0; const camDur=1700;
+let dragYaw=0, dragPitch=0, velYaw=0, pointerX=0, pointerY=0;
+const camGoal=c=>({yaw:c.yaw,pitch:c.pitch,R:c.R,tgt:c.tgt.slice()});
+
+/* ---------------- navigation ---------------- */
+let morphT0=0, enterT=0;
+const tagEl=$('#tag'), moreEl=$('#more');
+function tagHTML(el,i){return `<b>Plate ${roman(i+1)}.</b> ${el.dataset.tag}`+(el.dataset.tag2?` <span class="t2">${el.dataset.tag2}</span>`:'')+(el.dataset.do?` <span class="do t2">${el.dataset.do}</span>`:'');}
+function go(i,instant){
+  i=clamp(i,0,N-1); if(i===cur)return;
+  const prev=cur; cur=i; const now=performance.now(); enterT=now;
+  slides.forEach((s,k)=>{ if(k===i)return; const was=s.classList.contains('on'); s.classList.remove('on','instant','off'); if(was&&k===prev&&!instant&&!reduced){s.classList.add('off');setTimeout(()=>{if(k!==cur)s.classList.remove('off')},400);} });
+  const el=slides[i]; el.classList.remove('off'); el.classList.add('on'); if(instant) el.classList.add('instant');
+  const pl=el.querySelector('.plate'); pl.scrollTop=0; markScroll(pl);
+  const id=el.id, c=S[id];
+  try{history.replaceState(null,'','#'+id);}catch(e){}
+  $('#lblNo').textContent=roman(i+1); const ttl=$('#lblTtl'); ttl.textContent=el.dataset.title; ttl.classList.remove('peek');
+  $('#prev').disabled=i===0; $('#next').disabled=i===N-1;
+  if(instant||reduced||prev<0){tagEl.innerHTML=tagHTML(el,i);}
+  else{tagEl.classList.add('fade'); setTimeout(()=>{if(cur===i){tagEl.innerHTML=tagHTML(el,i);tagEl.classList.remove('fade');}},380);}
+  updateCurve();
+  // scene morph
+  U.from=(prev<0)?c.scene:U.to; U.to=c.scene; U.t=(prev<0||instant||reduced||U.from===U.to)?1:0; morphT0=now;
+  // per-plate state
+  U.hi=c.hi!=null?c.hi:-1;
+  if(id==='when'){U.hiPos=2;litList('#ladder',2);}
+  if(id==='api'){apiHover=-1;apiAt=-1;}
+  if(id==='prices'){c.init();U.hi=priceSel;U.barN=9;BARS.forEach((v,k)=>tw('bar'+k,v,900+k*90,()=>0.05,x=>U.bars[k]=x));}
+  twU('crystals',c.crystals||0,900);
+  U.groupOn=c.rl&&rlMode==='rl'?1:0; if(c.rl){rl.m=START.slice();rl.k=-1;rl.t0=now;}
+  if(c.path){setPath(id); if(id==='lora-rules')$('#lrOut').textContent=curLR.toFixed(2)+': '+pathVerdict();}
+  if(id==='cycles'){U.mode=cycMode;} if(id==='split'){U.beads=3;}
+  if(id==='lora'){twU('rank',+$('#rank').value/7,700);twU('train',1,700);}
+  if(id==='train'){U.rank=5/7;U.train=0;}
+  if(id==='data'){setTow(towMode,true);}
+  twU('az',c.late?c.yaw-2.25:c.yaw-0.95,1500); twU('el',c.late?0.3:0.86,1500); twU('warm',c.late?1:0,1500);
+  canvas.classList.toggle('pick',!!c.path&&!c.rl);
+  // camera
+  camFrom={yaw:cam.yaw+dragYaw,pitch:clamp(cam.pitch+dragPitch,0.1,1.45),R:cam.R,tgt:cam.tgt.slice()}; camTo=camGoal(c); camT0=now;
+  let dy=camTo.yaw-camFrom.yaw; dy-=Math.round(dy/(2*Math.PI))*2*Math.PI; camTo.yaw=camFrom.yaw+dy;
+  dragYaw=0; dragPitch=0; velYaw=0;
+  if(prev<0||reduced||instant){Object.assign(cam,camGoal(c));camFrom=null;}
+  if(!glReady) drawFallback();
+  needRender=true;
+}
+function markScroll(pl){const sc=pl.scrollHeight>pl.clientHeight+6, end=pl.scrollTop+pl.clientHeight>=pl.scrollHeight-6;pl.classList.toggle('scrolls',sc);pl.classList.toggle('end',end);if(pl.parentNode===slides[cur])moreEl.classList.toggle('show',sc&&pl.scrollTop<8);}
+$$('.plate').forEach(pl=>pl.addEventListener('scroll',()=>markScroll(pl),{passive:true}));
+$('#prev').onclick=()=>go(cur-1); $('#next').onclick=()=>go(cur+1);
+addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  const tg=e.target; if(tg&&(tg.tagName==='INPUT'||tg.tagName==='SELECT')&&/Arrow|Home|End|Page/.test(e.key))return;
+  if(tg&&tg.tagName==='BUTTON'&&e.key===' ')return;
+  if(['ArrowRight','PageDown'].includes(e.key)||(e.key===' '&&!e.shiftKey)){e.preventDefault();go(cur+1);}
+  else if(['ArrowLeft','PageUp'].includes(e.key)||(e.key===' '&&e.shiftKey)){e.preventDefault();go(cur-1);}
+  else if(e.key==='Home'){e.preventDefault();go(0);} else if(e.key==='End'){e.preventDefault();go(N-1);}
+});
+addEventListener('hashchange',()=>{const k=slides.findIndex(s=>'#'+s.id===location.hash);if(k>=0)go(k);});
+/* swipe on the text side */
+let sw=null;
+addEventListener('touchstart',e=>{const t=e.touches[0];const el=e.target;if(e.touches.length>1||el.closest('pre,input,select,.tokens,#curve,#gl,table'))return sw=null;sw={x:t.clientX,y:t.clientY,t:performance.now()};},{passive:true});
+addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0];const dx=t.clientX-sw.x,dy=t.clientY-sw.y;if(Math.abs(dx)>46&&Math.abs(dx)>1.4*Math.abs(dy)&&performance.now()-sw.t<900)go(cur+(dx<0?1:-1));sw=null;},{passive:true});
+
+/* loss-curve navigator: click, drag to scrub, hover to peek */
+const CW=300,CH=74;
+const curvePts=(()=>{const pts=[];for(let i=0;i<N;i++){const x=10+i*(CW-20)/(N-1);const y=9+(CH-27)*(1-Math.exp(-i*0.25))+Math.sin(i*2.1)*2.4*(1-i/N);pts.push([x,y]);}return pts;})();
+function updateCurve(){
+  const svg=$('#curve'); const pts=curvePts;
+  if(!svg.dataset.built){
+    const d='M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L');
+    let s=`<defs><radialGradient id="beadg" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#E7BFC8"/><stop offset=".55" stop-color="#7D1F35"/><stop offset="1" stop-color="#2E0A14"/></radialGradient></defs>`;
+    s+=`<path class="shade" d="${d} L${pts[N-1][0]} ${CH-9} L${pts[0][0]} ${CH-9} Z"/><path class="path" d="${d}"/><path class="done" d="${d}" pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"/>`;
+    s+=`<text class="axis" x="${CW-10}" y="${CH}" text-anchor="end">plates →</text><text class="axis" x="10" y="${CH}">loss ↓</text>`;
+    pts.forEach((p,i)=>{s+=`<circle class="pt" cx="${p[0]}" cy="${p[1]}" r="2.4"/>`;});
+    s+=`<circle class="bead" cx="${pts[0][0]}" cy="${pts[0][1]-1}" r="6.5"/>`;
+    svg.innerHTML=s; svg.dataset.built=1;
+    const idx=e=>{const r=svg.getBoundingClientRect();const x=(e.clientX-r.left)/r.width*CW;return clamp(Math.round((x-10)/((CW-20)/(N-1))),0,N-1);};
+    const peek=k=>{svg.querySelectorAll('.pt').forEach((c,i)=>c.classList.toggle('peek',i===k));const t=$('#lblTtl');if(k==null||k===cur){t.textContent=slides[cur].dataset.title;t.classList.remove('peek');$('#lblNo').textContent=roman(cur+1);}else{t.textContent=slides[k].dataset.title;t.classList.add('peek');$('#lblNo').textContent=roman(k+1);}};
+    let down=false;
+    svg.addEventListener('pointerdown',e=>{down=true;try{svg.setPointerCapture(e.pointerId);}catch(_){ }go(idx(e));e.preventDefault();});
+    svg.addEventListener('pointermove',e=>{if(down)go(idx(e));else if(e.pointerType==='mouse')peek(idx(e));});
+    svg.addEventListener('pointerup',()=>{down=false;});svg.addEventListener('pointercancel',()=>{down=false;});
+    svg.addEventListener('pointerleave',()=>{if(!down)peek(null);});
+  }
+  svg.querySelectorAll('.pt').forEach((c,i)=>{c.classList.toggle('past',i<cur);c.classList.remove('peek');c.setAttribute('r',i===cur?0:2.4);});
+  // length fraction along the polyline up to the current point
+  let tot=0,upto=0;for(let i=1;i<N;i++){const l=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]);tot+=l;if(i<=cur)upto+=l;}
+  svg.querySelector('.done').setAttribute('stroke-dashoffset',(100-100*upto/tot).toFixed(2));
+  const b=svg.querySelector('.bead');b.setAttribute('cx',pts[cur][0]);b.setAttribute('cy',pts[cur][1]-1);
+}
+
+/* ---------------- interactive controls ---------------- */
+const RANKS=[1,2,4,8,16,32,64,128], PER_RANK=130618176;
+$('#rank').addEventListener('input',e=>{const k=+e.target.value,r=RANKS[k];const n=r*PER_RANK;
+  const txt=n>=1e9?(n/1e9).toFixed(2)+' B':(n/1e6).toFixed(0)+' M';
+  $('#rankOut').firstChild.nodeValue=`r = ${r} · ${txt}`;
+  $('#rankOut small').textContent=`trainable parameters on Inkling 2 Small, all layers: ${(n/594e9*100).toFixed(n/594e9*100<0.1?3:2)} % of its 594 B`;
+  twU('rank',k/7,450);});
+const lrMap=v=>0.04*Math.pow(3.6/0.04,v/100);
+curLR=lrMap(+$('#lr').value);
+$('#lr').addEventListener('input',e=>{curLR=lrMap(+e.target.value);setPath('lora-rules');pathT0=performance.now()-500;$('#lrOut').textContent=curLR.toFixed(2)+': '+pathVerdict();});
+let cycMode=1;
+function drawCycles(){
+  const svg=$('#cycSvg'); const cells=12, w=600, cw=(w-20)/cells; let s='';
+  for(let i=0;i<cells;i++){const x=10+i*cw; s+=`<rect x="${x+1.5}" y="22" width="${cw-3}" height="34" fill="none" stroke="rgba(22,24,30,.38)" stroke-width="1"/>`;}
+  let step=0;for(let c=0;c<cells;c+=cycMode){const x=10+c*cw;s+=`<rect x="${x+1.5}" y="22" width="${cw-3}" height="34" fill="#7D1F35"/><text x="${x+cw/2}" y="44.5" text-anchor="middle" style="fill:#F2F3F5;font-style:normal;font-size:17px">${++step}</text>`;}
+  s+=`<text x="10" y="14">clock cycles →</text><text x="${w-10}" y="76" text-anchor="end">garnet: a cycle doing your work · empty: waiting</text>`;
+  svg.innerHTML=s;
+  $('#cycOut').textContent={3:'Naive: await forward_backward, then submit optim_step. The docs count three clock cycles per training step, so 4 steps in 12 cycles.',2:'Overlapped: submit both calls, then await both. They share a cycle, but the gap before the next batch typically costs another: 6 steps in 12 cycles.',1:'Pipelined: queue the next batch before awaiting the current one. Exactly one cycle per step: 12 steps in 12 cycles.'}[cycMode];
+}
+$$('[data-cyc]').forEach(b=>b.addEventListener('click',()=>{cycMode=+b.dataset.cyc;$$('[data-cyc]').forEach(x=>x.setAttribute('aria-pressed',x===b));drawCycles();U.mode=cycMode;needRender=true;}));
+drawCycles();
+$$('[data-mode]').forEach(b=>b.addEventListener('click',()=>{rlMode=b.dataset.mode;$$('[data-mode]').forEach(x=>x.setAttribute('aria-pressed',x===b));U.groupOn=rlMode==='rl'?1:0;rl.m=START.slice();rl.k=-1;rl.t0=performance.now();if(rlMode==='sl')setPath('sl-rl');needRender=true;}));
+(function(){ // ladder: the bead climbs to the rule you point at
+  const el=$('#ladder'); const set=k=>{U.hi=k;litList('#ladder',k);twU('hiPos',k,650);};
+  el.addEventListener('pointerover',e=>{const li=e.target.closest('[data-bar]');if(li)set(+li.dataset.bar);});
+  el.addEventListener('click',e=>{const li=e.target.closest('[data-bar]');if(li)set(+li.dataset.bar);});
+  const calls=$('#calls'); const setC=k=>{apiHover=k;if(k>=0){U.hi=k;litList('#calls',k);apiAt=-1;}needRender=true;};
+  calls.addEventListener('pointerover',e=>{const li=e.target.closest('[data-bar]');if(li)setC(+li.dataset.bar);});
+  calls.addEventListener('pointerleave',()=>setC(-1));
+})();
+
+/* ---------------- WebGL2 ---------------- */
+const canvas=$('#gl'); let gl=null, glReady=false, glFailed=false, progS, progP, locS={}, locP={}, fbo, tex, texW=0, texH=0, ext=null;
+const VS=`#version 300 es
+in vec2 aP; void main(){gl_Position=vec4(aP,0.,1.);}`;
+const FS=`#version 300 es
+precision highp float;
+out vec4 fragColor;
+uniform vec2 uRes; uniform float uTime;
+uniform int uFrom, uTo; uniform float uT;
+uniform vec3 uCam, uTgt; uniform vec2 uShift; uniform float uZoom;
+uniform vec3 uL, uKey;
+uniform float uRank, uTrain;
+uniform vec3 uBead; uniform vec3 uTrail[16]; uniform int uTrailN; uniform float uTrailProg;
+uniform vec3 uGroup[8]; uniform float uGroupR[8]; uniform float uGroupOn;
+uniform float uCrystals; uniform vec3 uCk[4];
+uniform float uBars[9]; uniform int uBarN; uniform float uHi, uHiPos;
+uniform float uTok[12]; uniform float uTokHover;
+uniform float uMode, uBeads; uniform float uE1, uE2;
+uniform vec3 uPaper; uniform vec4 uFade; uniform float uFocus, uAper; uniform int uSteps;
+
+#define FLOOR -1.3
+#define TOP -1.06
+#define PI 3.14159265
+const vec3 BC=vec3(0.,-0.35,0.); const float BR=4.15;
+vec2 gM;
+
+float hash1(float n){return fract(sin(n)*43758.5453123);}
+float hash2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vnoise(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);float n=dot(i,vec3(1.,57.,113.));
+  return mix(mix(mix(hash1(n),hash1(n+1.),f.x),mix(hash1(n+57.),hash1(n+58.),f.x),f.y),mix(mix(hash1(n+113.),hash1(n+114.),f.x),mix(hash1(n+170.),hash1(n+171.),f.x),f.y),f.z);}
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
+float sdBox(vec3 p, vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdRBox(vec3 p, vec3 b, float r){return sdBox(p,b-r)-r;}
+float sdCyl(vec3 p, float r, float h){vec2 d=abs(vec2(length(p.xz),p.y))-vec2(r,h);return min(max(d.x,d.y),0.)+length(max(d,0.));}
+float sdCap(vec3 p, vec3 a, vec3 b, float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+float sdOct(vec3 p, float s){p=abs(p);return (p.x+p.y+p.z-s)*0.57735027;}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+vec2 U2(vec2 a, vec2 b){return a.x<b.x?a:b;}
+float plinthR(vec3 p,float r){return min(sdCyl(p-vec3(0.,FLOOR+0.07,0.),r,0.07)-0.014,sdCyl(p-vec3(0.,FLOOR+0.185,0.),r-0.13,0.045)-0.012);}
+float plinthB(vec3 p,vec2 h){return min(sdRBox(p-vec3(0.,FLOOR+0.07,0.),vec3(h.x,0.07,h.y),0.016),sdRBox(p-vec3(0.,FLOOR+0.185,0.),vec3(h.x-0.13,0.057,h.y-0.13),0.014));}
+float laptop(vec3 lp){
+  float lb=sdRBox(lp-vec3(0.,0.03,0.),vec3(0.42,0.03,0.29),0.015);
+  vec3 ls=lp-vec3(0.,0.06,-0.29); ls.yz=rot(-0.32)*ls.yz;
+  return min(lb,sdRBox(ls-vec3(0.,0.27,0.),vec3(0.42,0.27,0.02),0.012));
+}
+
+float H(vec2 q){float h=0.09*dot(q,q);h+=0.24*sin(1.3*q.x+0.4)*cos(1.1*q.y-0.3);h+=0.07*sin(2.7*q.x-1.1)*sin(2.3*q.y+0.7);vec2 d=q-vec2(1.0,0.8);h-=1.25*exp(-dot(d,d)/1.7);return h;}
+float SY(vec2 q){return 0.8*H(q)+0.15;}
+
+/* 0: loss surface, cast as a bowl on a round plinth */
+vec2 sTerrain(vec3 p){
+  vec2 r=vec2(plinthR(p,3.25),1.);
+  float cyl=length(p.xz)-2.95;
+  if(cyl<0.35&&p.y<1.55){
+    float dt=(p.y-SY(p.xz))*0.6;
+    float d=smax(dt,cyl,0.07); d=max(d,TOP-0.02-p.y);
+    r=U2(r,vec2(d,7.));
+    r=U2(r,vec2(length(p-uBead)-0.13,3.));
+    if(uGroupOn>0.5){for(int i=0;i<8;i++){r=U2(r,vec2(length(p-uGroup[i])-0.085,20.+float(i)));}}
+    if(uCrystals>0.01){for(int k=0;k<4;k++){vec3 q=p-uCk[k]-vec3(0.,0.36,0.);q.xz=rot(uTime*0.6+float(k)*1.7)*q.xz;q.y*=0.66;
+      r=U2(r,vec2(sdOct(q,0.19*uCrystals)*0.8,4.));
+      r=U2(r,vec2(sdCyl(p-uCk[k]-vec3(0.,0.07,0.),0.014,0.13*uCrystals),6.));}}
+  } else r=U2(r,vec2(max(cyl,p.y-1.3),7.));
+  return r;
+}
+/* 1: LoRA. W below, the product B.A floating over it as a thin garnet cast */
+float relief(vec2 q){
+  float K=1.+uRank*7.; float f=0.;
+  for(int k=0;k<8;k++){float fk=float(k);float a=clamp(K-fk,0.,1.);if(a<=0.)break;
+    f+=a/(1.+0.3*fk)*sin(q.x*(1.9+fk*1.37)+fk*2.1+0.6)*sin(q.y*(1.6+fk*1.13)-fk*1.3+0.9);}
+  return f;
+}
+float veneerY(){return TOP+0.56+0.5+0.07*sin(uTime*0.8);}
+vec2 sLora(vec3 p){
+  vec2 r=vec2(plinthB(p,vec2(2.35,2.35)),1.);
+  r=U2(r,vec2(sdRBox(p-vec3(0.3,TOP+0.28,0.3),vec3(1.4,0.28,1.4),0.03),8.));
+  vec3 q=p-vec3(0.3,0.,0.3); float yv=veneerY();
+  float bx=max(abs(q.x),abs(q.z))-1.4;
+  float bb=max(bx,abs(q.y-yv-0.115)-0.125);
+  if(bb<0.12){float h=0.025+0.2*uTrain*smoothstep(-1.1,1.1,relief(q.xz));
+    r=U2(r,vec2(max(max((q.y-yv-h)*0.62,yv-q.y),bx),5.));}
+  else r=U2(r,vec2(bb,5.));
+  float w=mix(0.04,0.4,uRank);
+  r=U2(r,vec2(sdRBox(q-vec3(-1.4-0.22-w,yv+0.05,0.),vec3(w,0.05,1.4),0.02),2.));
+  r=U2(r,vec2(sdRBox(q-vec3(0.,yv+0.05,-1.4-0.22-w),vec3(1.4,0.05,w),0.02),3.5));
+  vec3 a=vec3(abs(q.x)-1.36,q.y-(TOP+0.56+(yv-TOP-0.56)*0.5),abs(q.z)-1.36);
+  r=U2(r,vec2(sdCyl(a,0.014,(yv-TOP-0.56)*0.5),6.));
+  return r;
+}
+/* 2: your machine and their racks */
+vec2 sSplit(vec3 p){
+  vec3 a=p-vec3(-1.75,0.,1.35);
+  vec2 r=vec2(plinthB(a,vec2(0.85,0.75)),1.);
+  r=U2(r,vec2(laptop(a-vec3(0.,TOP,0.05)),6.));
+  vec3 b=p-vec3(0.95,0.,-0.85);
+  r=U2(r,vec2(plinthB(b,vec2(1.85,1.15)),1.));
+  float ix=clamp(floor(b.x+0.5),-1.,1.); vec3 q=b-vec3(ix,TOP+0.98,0.);
+  float slab=sdRBox(q,vec3(0.37,0.98,0.72),0.035);
+  slab=max(slab,-sdBox(vec3(q.x,mod(q.y+0.11,0.22)-0.11,q.z-0.74),vec3(0.27,0.04,0.07)));
+  r=U2(r,vec2(slab,1.));
+  vec3 A=vec3(-1.75,TOP+0.55,1.25), B=vec3(0.95,TOP+2.15,-0.85);
+  for(int i=0;i<4;i++){
+    float s=fract(uTime*0.2+float(i)*0.25); vec3 c=mix(A,B,s); float e=sin(PI*s);
+    r=U2(r,vec2(length(p-c-vec3(0.3*e,0.85*e,0.45*e))-0.09*smoothstep(0.,0.08,e),2.));
+    float s2=fract(uTime*0.2+float(i)*0.25+0.125); c=mix(B,A,s2); e=sin(PI*s2);
+    r=U2(r,vec2(length(p-c-vec3(-0.45*e,0.35*e,-0.5*e))-0.075*smoothstep(0.,0.08,e),3.));
+  }
+  return r;
+}
+/* 3: worker pool */
+vec2 sPool(vec3 p){
+  vec3 q=p-vec3(0.,0.,-0.5);
+  vec2 r=vec2(plinthB(q,vec2(2.3,1.7)),1.);
+  float sp=0.98;
+  float beat=pow(0.5+0.5*sin(uTime*2.4),5.);
+  float ix0=clamp(floor(q.x/sp),-2.,1.);
+  float ixn=clamp(ix0+(fract(q.x/sp)<0.5?-1.:1.),-2.,1.);
+  float iz0=clamp(floor(q.z/sp+0.5),-1.,1.);
+  float izn=clamp(iz0+(fract(q.z/sp+0.5)<0.5?-1.:1.),-1.,1.);
+  for(int k=0;k<3;k++){
+    float ix=k==1?ixn:ix0; float iz=k==2?izn:iz0;
+    vec3 l=q-vec3((ix+0.5)*sp,0.,iz*sp);
+    float h=0.45+0.16*beat;
+    r=U2(r,vec2(sdCyl(l-vec3(0.,TOP+h,0.),0.3,h)-0.02,1.));
+    float t=floor(hash2(vec2(ix,iz))*3.);
+    r=U2(r,vec2(sdCyl(l-vec3(0.,TOP+2.*h+0.05,0.),0.24,0.035)-0.012,30.+t));
+  }
+  vec3 lp=p-vec3(0.1,0.,2.35);
+  r=U2(r,vec2(sdRBox(lp-vec3(0.,FLOOR+0.05,0.),vec3(0.62,0.05,0.5),0.016),1.));
+  r=U2(r,vec2(laptop(lp-vec3(0.,FLOOR+0.1,0.03)),6.));
+  vec3 A=vec3(0.1,FLOOR+0.7,2.1), B=vec3(0.,TOP+1.75,-0.5);
+  for(int i=0;i<3;i++){ if(float(i)>=uBeads) break;
+    float s=fract(uTime*0.42+float(i)/max(uBeads,1.));
+    vec3 c=mix(A,B,s); c.y+=sin(PI*s)*0.7;
+    r=U2(r,vec2(length(p-c)-0.08,2.));
+  }
+  return r;
+}
+/* 4: clock cycles as twelve trays */
+vec2 sTrays(vec3 p){
+  vec2 r=vec2(plinthB(p,vec2(3.2,0.78)),1.);
+  float sp=0.5; float fi=floor(p.x/sp+6.);
+  float sweep=fract(uTime*0.11)*13.-0.5;
+  for(int k=-1;k<=1;k++){
+    float i=clamp(fi+float(k),0.,11.);
+    vec3 l=p-vec3((i-5.5)*sp,TOP,0.12);
+    float tray=sdRBox(l-vec3(0.,0.04,0.),vec3(0.21,0.04,0.3),0.012);
+    tray=max(tray,-sdBox(l-vec3(0.,0.075,0.),vec3(0.175,0.045,0.265)));
+    r=U2(r,vec2(tray,1.));
+    if(mod(i,uMode)<0.5){
+      float dd=i-sweep; float lift=0.3*exp(-dd*dd*1.6);
+      r=U2(r,vec2(sdRBox(l-vec3(0.,0.19+lift,0.),vec3(0.14,0.14,0.2),0.025),2.));
+    }
+  }
+  r=U2(r,vec2(sdCap(p,vec3(-2.95,TOP+0.62,-0.52),vec3(2.95,TOP+0.62,-0.52),0.014),6.));
+  r=U2(r,vec2(sdCyl(vec3(abs(p.x)-2.95,p.y-TOP-0.31,p.z+0.52),0.014,0.31),6.));
+  r=U2(r,vec2(length(p-vec3((clamp(sweep,0.,11.)-5.5)*sp,TOP+0.62,-0.52))-0.1,3.));
+  return r;
+}
+/* 5: the ladder */
+vec2 sSteps(vec3 p){
+  vec2 r=vec2(plinthB(p,vec2(2.3,0.95)),1.);
+  float fi=floor(p.x/0.95+2.);
+  for(int k=-1;k<=1;k++){
+    float i=clamp(fi+float(k),0.,3.);
+    float h=0.3+0.4*i;
+    vec3 l=p-vec3((i-1.5)*0.95,TOP+h,0.);
+    r=U2(r,vec2(sdRBox(l,vec3(0.455,h,0.62),0.025),1.));
+    if(abs(i-uHi)<0.5) r=U2(r,vec2(sdRBox(l-vec3(0.,h+0.012,0.),vec3(0.38,0.014,0.54),0.008),2.));
+  }
+  if(uHi>-0.5){float u=uHiPos; float y=TOP+2.*(0.3+0.4*u)+0.19+0.45*abs(sin(PI*u));
+    r=U2(r,vec2(length(p-vec3((u-1.5)*0.95,y,0.))-0.17,3.));}
+  return r;
+}
+/* 6: eight instruments */
+vec2 sInstr(vec3 p){
+  float a=atan(p.x,1.6-p.z); float i=clamp(floor(a/0.36+4.),0.,7.); float ang=(i-3.5)*0.36;
+  vec3 l=p-vec3(sin(ang)*2.3,0.,1.6-cos(ang)*2.3); l.xz=rot(-ang)*l.xz;
+  float ped=min(sdCyl(l-vec3(0.,FLOOR+0.045,0.),0.35,0.045)-0.01,sdCyl(l-vec3(0.,FLOOR+0.4,0.),0.25,0.36)-0.012);
+  ped=min(ped,sdCyl(l-vec3(0.,FLOOR+0.79,0.),0.3,0.025)-0.01);
+  vec2 r=vec2(ped,1.);
+  r=U2(r,vec2(sdCyl(l-vec3(0.,FLOOR+0.92,0.),0.02,0.12),6.));
+  vec3 q=l-vec3(0.,FLOOR+1.2,0.); float d; int k=int(i);
+  if(k==0) d=length(q)-0.21;
+  else if(k==1) d=min(sdRBox(q-vec3(0.,0.07,0.),vec3(0.21,0.028,0.1),0.012),sdRBox(q+vec3(0.,0.07,0.),vec3(0.1,0.028,0.21),0.012));
+  else if(k==2) d=sdOct(q*vec3(1.,0.6,1.),0.21)*0.75;
+  else if(k==3) d=length(vec2(length(q.xy)-0.17,q.z))-0.055;
+  else if(k==4) d=sdCap(q,vec3(-0.12,-0.16,0.),vec3(0.12,0.16,0.),0.065);
+  else if(k==5) d=sdRBox(q,vec3(0.19,0.21,0.035),0.014);
+  else if(k==6) d=sdCyl(q+vec3(0.,0.14,0.),0.21,0.03)-0.012;
+  else d=min(min(sdCyl(q+vec3(0.,0.14,0.),0.21,0.03),sdCyl(q,0.21,0.03)),sdCyl(q-vec3(0.,0.14,0.),0.21,0.03))-0.012;
+  r=U2(r,vec2(d,abs(i-uHi)<0.5?2.:1.));
+  r=U2(r,vec2(length(p-uBead)-0.085,3.));
+  return r;
+}
+/* 7: tokens and their predictions */
+vec2 sTokens(vec3 p){
+  vec2 r=vec2(plinthB(p,vec2(3.2,0.62)),1.);
+  float sp=0.45; float fi=floor(p.x/sp+6.5);
+  for(int k=-1;k<=1;k++){
+    float i=clamp(fi+float(k),0.,12.);
+    float w=i<0.5?0.:uTok[max(int(i)-1,0)];
+    float hov=abs(i-1.-uTokHover)<0.5?1.:0.;
+    float lift=w*0.3+hov*0.14;
+    vec3 c=vec3((i-6.)*sp,TOP+0.19+lift,0.);
+    r=U2(r,vec2(sdRBox(p-c,vec3(0.185),0.03),w>0.5?2.:1.));
+    if(lift>0.02) r=U2(r,vec2(sdCyl(p-vec3(c.x,TOP+lift*0.5,0.),0.03,lift*0.5),6.));
+  }
+  float fj=floor(p.x/sp+6.);
+  for(int k=-1;k<=1;k++){
+    float j=clamp(fj+float(k),0.,11.);
+    float w=uTok[int(j)]; float hov=abs(j-uTokHover)<0.5?1.:0.;
+    vec3 q=p-vec3((j-5.5)*sp,TOP+0.96,0.);
+    float th=mix(0.011,0.03,w)+hov*0.012;
+    float d=max(length(vec2(length(q.xy)-sp*0.5,q.z))-th,-q.y);
+    d=min(d,length(q-vec3(sp*0.5,0.,0.))-th*1.9);
+    r=U2(r,vec2(d,w>0.5?2.:6.));
+  }
+  return r;
+}
+/* 8: mixture of experts */
+vec2 sMoe(vec3 p){
+  vec2 r=vec2(plinthR(p,2.85),1.);
+  float core=length(p-vec3(0.,TOP+0.95,0.))-0.42; float stem=sdCyl(p-vec3(0.,TOP+0.4,0.),0.12,0.4);
+  r=U2(r,vec2(smin(core,stem,0.18),1.));
+  float R=2.2, sec=6.2831853/32.;
+  float a=atan(p.z,p.x); float i=floor(a/sec+0.5); float ang=i*sec;
+  float ii=mod(i+32.,32.);
+  bool lit=abs(ii-uE1)<0.5||abs(ii-uE2)<0.5;
+  float hh=lit?0.5:0.2;
+  vec3 c=vec3(cos(ang)*R,TOP+hh,sin(ang)*R);
+  vec3 l=p-c; l.xz=rot(ang)*l.xz;
+  r=U2(r,vec2(sdRBox(l,vec3(0.13,hh,0.13),0.03),lit?2.:1.));
+  for(int k=0;k<2;k++){float ei=k==0?uE1:uE2; float ea=ei*sec; vec3 ec=vec3(cos(ea)*R,TOP+1.02,sin(ea)*R);
+    vec3 m=mix(vec3(0.,TOP+0.95,0.),ec,0.5)+vec3(0.,0.42,0.);
+    r=U2(r,vec2(min(sdCap(p,vec3(0.,TOP+1.2,0.),m,0.02),sdCap(p,m,ec,0.02)),2.));}
+  return r;
+}
+/* 9: price columns */
+vec2 sCols(vec3 p){
+  float fn=float(uBarN); float sp=0.6; float half_=fn*sp*0.5;
+  vec2 r=vec2(plinthB(p,vec2(half_+0.3,0.62)),1.);
+  float fi=floor((p.x+half_)/sp);
+  for(int k=-1;k<=1;k++){
+    float i=clamp(fi+float(k),0.,fn-1.);
+    int ix=int(i);
+    float h=uBars[ix];
+    vec3 l=p-vec3(-half_+(i+0.5)*sp,0.,0.);
+    float shaft=sdCyl(l-vec3(0.,TOP+0.06+h*0.5,0.),0.165,h*0.5);
+    shaft+=0.008*cos(atan(l.z,l.x)*14.);
+    float cap=sdRBox(l-vec3(0.,TOP+0.06+h+0.045,0.),vec3(0.235,0.045,0.235),0.014);
+    float foot=sdRBox(l-vec3(0.,TOP+0.03,0.),vec3(0.225,0.03,0.225),0.012);
+    r=U2(r,vec2(min(shaft*0.9,foot),1.));
+    r=U2(r,vec2(cap,abs(i-uHi)<0.5?2.:1.));
+  }
+  return r;
+}
+/* 10: the dataset as a stack of cards */
+vec3 cardLocal(vec3 p){vec3 q=p-vec3(0.1,TOP+1.58+0.05*sin(uTime*0.9),0.15);q.xz=rot(-0.35)*q.xz;q.yz=rot(0.72)*q.yz;return q;}
+vec2 sCards(vec3 p){
+  vec2 r=vec2(plinthB(p,vec2(1.55,1.25)),1.);
+  float fi=floor((p.y-TOP)/0.03);
+  for(int k=-1;k<=1;k++){
+    float j=clamp(fi+float(k),0.,27.);
+    vec3 q=p-vec3((hash1(j*3.7)-0.5)*0.07,TOP+0.015+j*0.03,(hash1(j*9.1)-0.5)*0.07);
+    q.xz=rot((hash1(j)-0.5)*0.26)*q.xz;
+    r=U2(r,vec2(sdBox(q,vec3(1.0,0.011,0.72))-0.002,1.));
+  }
+  r=U2(r,vec2(sdBox(cardLocal(p),vec3(1.0,0.012,0.72))-0.004,10.));
+  return r;
+}
+/* 11: base form and tuned form */
+vec2 sForms(vec3 p){
+  vec2 r=vec2(plinthB(p,vec2(2.75,1.2)),1.);
+  vec3 q=p; float side=sign(p.x); q.x=abs(p.x)-1.3;
+  r=U2(r,vec2(sdCyl(q-vec3(0.,TOP+0.09,0.),0.62,0.09)-0.012,1.));
+  vec3 t=q-vec3(0.,TOP+0.62,0.); t.x*=1.-0.16*clamp(-t.y/0.45,-1.,1.);
+  float torso=sdRBox(t,vec3(0.7,0.45,0.34),0.3);
+  float neck=sdCap(q,vec3(0.,TOP+1.0,0.),vec3(0.,TOP+1.5,0.05),0.135);
+  float head=(length((q-vec3(0.,TOP+1.83,0.08))/vec3(0.8,1.,0.92))-0.4)*0.85;
+  float form=smin(smin(torso,neck,0.2),head,0.1);
+  form=max(form,TOP+0.17-q.y);
+  r=U2(r,vec2(form,1.));
+  if(side>0.){
+    float cut=dot(q-vec3(0.,TOP+1.15,0.),normalize(vec3(0.75,-0.55,0.35)))+0.07*sin(q.y*7.+q.z*5.);
+    float shell=max(abs(form-0.045)-0.014,-cut);
+    r=U2(r,vec2(shell,2.));
+  }
+  return r;
+}
+vec2 sceneMap(int id, vec3 p){
+  if(id==0) return sTerrain(p);
+  if(id==1) return sLora(p);
+  if(id==2) return sSplit(p);
+  if(id==3) return sPool(p);
+  if(id==4) return sTrays(p);
+  if(id==5) return sSteps(p);
+  if(id==6) return sInstr(p);
+  if(id==7) return sTokens(p);
+  if(id==8) return sMoe(p);
+  if(id==9) return sCols(p);
+  if(id==10) return sCards(p);
+  return sForms(p);
+}
+vec2 map(vec3 p){
+  vec2 b=sceneMap(uTo,p);
+  if(uT>=0.999){gM=vec2(b.y);return b;}
+  vec2 a=sceneMap(uFrom,p);
+  gM=vec2(a.y,b.y);
+  float d=mix(a.x,b.x,uT);
+  d+=0.05*sin(p.x*3.1+uTime*2.)*sin(p.z*2.7-uTime*1.7)*sin(p.y*2.3+1.)*sin(PI*uT);
+  return vec2(d,uT<0.5?a.y:b.y);
+}
+vec3 calcN(vec3 p,float e){vec2 k=vec2(1.,-1.)*e;return normalize(k.xyy*map(p+k.xyy).x+k.yyx*map(p+k.yyx).x+k.yxy*map(p+k.yxy).x+k.xxx*map(p+k.xxx).x);}
+float shadow(vec3 ro, vec3 rd){
+  float res=1.,t=0.03; int n=uSteps/3+6;
+  for(int i=0;i<n;i++){
+    float h=map(ro+rd*t).x;
+    if(h<0.0005){res=0.;break;}
+    res=min(res,5.5*h/t);
+    t+=clamp(h*0.9,0.014,0.35);
+    if(t>7.5)break;
+  }
+  res=clamp(res,0.,1.); return res*res*(3.-2.*res);
+}
+float ao(vec3 p, vec3 n){float o=0.,s=1.;for(int i=1;i<=5;i++){float h=0.02+0.1*float(i);o+=(h-map(p+n*h).x)*s;s*=0.7;}return clamp(1.-1.35*o,0.,1.);}
+float segDist(vec2 p, vec2 a, vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
+vec3 env(vec3 d){
+  vec3 c=mix(vec3(0.26,0.27,0.31),vec3(0.84,0.86,0.9),smoothstep(-0.35,0.75,d.y));
+  float k=max(dot(d,uL),0.); c+=uKey*(pow(k,40.)*2.2+pow(k,5.)*0.22);
+  c+=vec3(0.75,0.8,0.95)*smoothstep(0.8,0.97,dot(d,normalize(vec3(-uL.z,0.35,uL.x))))*0.9;
+  return c;
+}
+const vec3 GAR=vec3(0.125,0.009,0.024);
+const vec3 INKC=vec3(0.018,0.02,0.028);
+// returns albedo; k = (specular, gloss power, subsurface, mirror)
+vec3 material(float m, vec3 p, vec3 n, float t, out vec4 k){
+  vec3 plaster=vec3(0.86,0.85,0.83);
+  plaster*=0.93+0.07*vnoise(p*5.3)+0.03*(vnoise(p*31.)-0.5);
+  k=vec4(0.07,12.,1.,0.);
+  if(m<1.5) return plaster;
+  if(m<2.5){k=vec4(0.9,90.,0.35,0.6);return GAR;}
+  if(m<3.25){k=vec4(1.,140.,0.,0.92);return vec3(0.6,0.61,0.65);}
+  if(m<3.75){k=vec4(0.7,45.,0.,0.45);return vec3(0.2,0.21,0.245);}
+  if(m<4.5){k=vec4(0.7,50.,0.,0.6);return vec3(0.33,0.35,0.4);}
+  if(m<5.5){ // the garnet cast: deeper colour in the valleys, like pooled glaze
+    float hgt=clamp((p.y-veneerY()-0.025)/0.2,0.,1.);
+    k=vec4(0.8,80.,0.3,0.5);
+    vec2 g=abs(fract((p.xz-0.3)*5.714+0.5)-0.5); float gl=smoothstep(0.035,0.012,min(g.x,g.y));
+    return mix(GAR*0.5,GAR*1.9,hgt)*(1.-0.4*gl);
+  }
+  if(m<6.5){k=vec4(0.35,30.,0.,0.12);return INKC;}
+  if(m<7.5){
+    vec3 c=plaster;
+    float v=(p.y+1.)*7.; float bw=(0.028+0.0036*t)*max(sqrt(max(1.-n.y*n.y,0.)),0.1);
+    float dl=abs(fract(v+0.5)-0.5);
+    float major=abs(mod(floor(v+0.5),5.))<0.5?1.:0.;
+    float line=(1.-smoothstep(bw*(0.55+0.45*major),bw*(1.05+0.5*major),dl))*smoothstep(0.08,0.4,n.y);
+    c=mix(c,vec3(0.2,0.02,0.045),line*(0.6+0.35*major));
+    float dmin=1e3;
+    for(int i=0;i<15;i++){ if(i+1>=uTrailN) break; if(float(i)*40./15.>uTrailProg+0.5) break; dmin=min(dmin,segDist(p.xz,uTrail[i].xz,uTrail[i+1].xz)); }
+    c=mix(c,INKC*1.4,(1.-smoothstep(0.024,0.04,dmin))*step(0.3,n.y));
+    return c;
+  }
+  if(m<8.5){ // W: a frozen matrix, engraved with its cells
+    vec2 g=abs(fract((p.xz-0.3)*5.714+0.5)-0.5); float gl=smoothstep(0.04,0.014,min(g.x,g.y));
+    float gy=smoothstep(0.03,0.01,abs(fract((p.y-TOP)*5.+0.5)-0.5));
+    return plaster*(1.-0.3*(n.y>0.5?gl:gy*0.6));
+  }
+  if(m<10.5){ // the lifted card
+    vec3 q=cardLocal(p); k=vec4(0.1,20.,0.6,0.);
+    vec3 c=vec3(0.9,0.89,0.87);
+    float row=floor((q.z+0.72)/0.12); float fz=fract((q.z+0.72)/0.12);
+    float len=0.55+0.35*hash1(row*7.3);
+    float ln=smoothstep(0.26,0.34,fz)*smoothstep(0.74,0.66,fz)*step(-0.86,q.x)*step(q.x,-0.86+1.72*len)*step(1.,row)*step(row,10.);
+    bool asst=row>5.5;
+    if(asst) c=mix(c,vec3(0.55,0.2,0.26),0.22*step(abs(q.x),0.93)*step(0.02,q.z)*step(q.z,0.62));
+    c=mix(c,asst?GAR*1.6:INKC*3.,ln*0.92*step(0.,q.y));
+    return c;
+  }
+  if(m>=19.5&&m<28.){int i=int(m-20.+0.5);float rw=uGroupR[i];k=vec4(0.9,80.,0.3,0.5);return mix(vec3(0.1,0.105,0.125),vec3(0.4,0.03,0.07),rw);}
+  if(m>=29.5){float tt=m-30.;k=vec4(0.8,70.,0.3,0.5);return tt<0.5?GAR:(tt<1.5?vec3(0.3,0.32,0.37):vec3(0.62,0.38,0.42));}
+  return plaster;
+}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy-0.5*uRes)/uRes.y-uShift;
+  vec3 ro=uCam, ww=normalize(uTgt-uCam), uu=normalize(cross(ww,vec3(0.,1.,0.))), vv=cross(uu,ww);
+  vec3 rd=normalize(uv.x*uu+uv.y*vv+uZoom*ww);
+  vec3 L=uL;
+  vec3 oc=ro-BC; float b=dot(oc,rd), c=dot(oc,oc)-BR*BR, disc=b*b-c;
+  float tF=rd.y<-1e-4?(FLOOR-ro.y)/rd.y:1e5;
+  float t=0.; bool hit=false;
+  if(disc>0.){
+    float s=sqrt(disc); t=max(-b-s,0.); float t1=min(-b+s,tF);
+    for(int i=0;i<uSteps;i++){
+      if(t>t1)break;
+      float h=map(ro+rd*t).x;
+      if(h<0.0006*t){hit=true;break;}
+      t+=h*0.88;
+    }
+    if(hit){for(int i=0;i<3;i++)t+=map(ro+rd*t).x*0.9;}
+  }
+  vec3 col=uPaper; float coc=0.;
+  if(hit){
+    vec3 p=ro+rd*t; vec3 n=calcN(p,0.0006*t);
+    vec2 hm=map(p); float m=hm.y;
+    if(uT<0.999) m=vnoise(p*2.1+3.)<uT*1.4-0.2?gM.y:gM.x;
+    vec4 k; vec3 al=material(m,p,n,t,k);
+    if(k.z>0.9){ // plaster tooth
+      vec3 g=vec3(vnoise(p*44.),vnoise(p*44.+19.),vnoise(p*44.+37.))-0.5;
+      n=normalize(n+g*0.07);
+    }
+    float ndl=dot(n,L); float dif=max(ndl,0.);
+    float sh=shadow(p+n*0.008,L);
+    float occ=ao(p,n);
+    float thin=1.-clamp(-map(p-n*0.2).x/0.2,0.,1.);
+    float open=clamp(map(p+L*0.3).x/0.3,0.,1.);
+    float wrap=clamp((ndl+0.55)/1.55,0.,1.);
+    vec3 sssC=m>1.5?vec3(1.,0.1,0.18):vec3(1.,0.86,0.8);
+    vec3 sky=vec3(0.6,0.66,0.78), ground=uPaper*uPaper*0.8;
+    vec3 lit=al*uKey*dif*sh;
+    lit+=al*sssC*uKey*k.z*(0.3*(wrap-dif)*(0.3+0.7*sh)+0.22*thin*open*(0.3+0.7*wrap));
+    lit+=al*mix(ground,sky,0.5+0.5*n.y)*0.62*occ;
+    lit+=al*ground*0.3*clamp(0.5-0.5*n.y,0.,1.)*occ;
+    vec3 hal=normalize(L-rd);
+    float fre=pow(1.-clamp(dot(n,-rd),0.,1.),5.);
+    lit+=uKey*pow(clamp(dot(n,hal),0.,1.),k.y)*k.x*sh*(k.y/60.+0.25);
+    if(k.w>0.){
+      vec3 e=env(reflect(rd,n))*mix(vec3(1.),al/max(al.r,max(al.g,al.b)),k.w>0.7?0.5:0.)*occ;
+      float F=k.w>0.7?0.75+0.25*fre:0.05+0.95*fre;
+      lit=mix(lit,e,F*k.w);
+    } else lit+=sky*fre*0.1*occ;
+    col=1.-exp(-lit*1.22);
+    col=pow(col,vec3(1./2.2));
+    coc=clamp(abs(t-uFocus)/t*uAper,0.,1.);
+  } else if(tF<1e4){
+    vec3 p=ro+rd*tF; float r=length(p.xz);
+    if(r<8.5){
+      float sh=shadow(p+vec3(0.,0.004,0.),L);
+      float d=map(p+vec3(0.,0.02,0.)).x;
+      float occ=0.62+0.38*smoothstep(0.,0.55,d);
+      vec3 f=uPaper*mix(vec3(0.66,0.675,0.72),vec3(1.),sh)*occ;
+      col=mix(f,uPaper,smoothstep(4.2,8.5,r));
+    }
+    coc=clamp(abs(tF-uFocus)/tF*uAper,0.,1.)*smoothstep(8.5,5.,r);
+  }
+  vec2 e=gl_FragCoord.xy/uRes;
+  float f=smoothstep(0.,uFade.x,e.x)*smoothstep(0.,uFade.y,1.-e.x)*smoothstep(0.,uFade.z,1.-e.y)*smoothstep(0.,uFade.w,e.y);
+  col=mix(uPaper,col,f);
+  fragColor=vec4(col,coc*f);
+}`;
+const PS=`#version 300 es
+precision highp float;
+out vec4 o; uniform sampler2D uTex; uniform vec2 uRes; uniform float uTime, uBlur;
+float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+void main(){
+  vec2 uv=gl_FragCoord.xy/uRes; vec4 c=texture(uTex,uv); vec3 acc=c.rgb; float ws=1.;
+  float rad=c.a*uBlur;
+  if(rad>0.6){
+    float rot=h2(gl_FragCoord.xy)*6.2831853;
+    for(int i=0;i<14;i++){
+      float fi=float(i)+0.5; float r=sqrt(fi/14.)*rad; float a=fi*2.39996323+rot;
+      vec4 s=texture(uTex,uv+vec2(cos(a),sin(a))*r/uRes);
+      float w=smoothstep(r-1.5,r+1.,s.a*uBlur+0.8);
+      acc+=s.rgb*w; ws+=w;
+    }
+  }
+  vec3 col=acc/ws;
+  col+=(h2(gl_FragCoord.xy+fract(uTime)*91.7)-0.5)*0.02;
+  o=vec4(col,1.);
+}`;
+function fail(msg){ if(msg)console.error(msg); glFailed=true; glReady=false; root.classList.add('nogl','fb-on'); root.classList.remove('gl-live'); drawFallback(); }
+function initGL(){
+  try{ gl=canvas.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,powerPreference:'high-performance',preserveDrawingBuffer:true}); }catch(e){gl=null;}
+  if(!gl) return false;
+  ext=gl.getExtension('KHR_parallel_shader_compile');
+  const mk=(vs,fs)=>{const p=gl.createProgram();const v=gl.createShader(gl.VERTEX_SHADER),f=gl.createShader(gl.FRAGMENT_SHADER);gl.shaderSource(v,vs);gl.shaderSource(f,fs);gl.compileShader(v);gl.compileShader(f);gl.attachShader(p,v);gl.attachShader(p,f);gl.bindAttribLocation(p,0,'aP');gl.linkProgram(p);p._f=f;p._v=v;return p;};
+  progS=mk(VS,FS); progP=mk(VS,PS);
+  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();fail();});
+  return true;
+}
+function finishGL(){
+  for(const p of [progS,progP]){ if(!gl.getProgramParameter(p,gl.LINK_STATUS)){fail('shader: '+gl.getProgramInfoLog(p)+' | '+gl.getShaderInfoLog(p._f)+' | '+gl.getShaderInfoLog(p._v));return;} }
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+  ['uRes','uTime','uFrom','uTo','uT','uCam','uTgt','uShift','uZoom','uL','uKey','uRank','uTrain','uBead','uTrail[0]','uTrailN','uTrailProg','uGroup[0]','uGroupR[0]','uGroupOn','uCrystals','uCk[0]','uBars[0]','uBarN','uHi','uHiPos','uTok[0]','uTokHover','uMode','uBeads','uE1','uE2','uPaper','uFade','uFocus','uAper','uSteps'].forEach(n=>locS[n]=gl.getUniformLocation(progS,n));
+  ['uTex','uRes','uTime','uBlur'].forEach(n=>locP[n]=gl.getUniformLocation(progP,n));
+  tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  fbo=gl.createFramebuffer();
+  glReady=true; resize(); needRender=true;
+}
+function pollGL(){
+  if(glFailed||glReady||!gl)return;
+  if(ext&&!(gl.getProgramParameter(progS,ext.COMPLETION_STATUS_KHR)&&gl.getProgramParameter(progP,ext.COMPLETION_STATUS_KHR)))return;
+  finishGL();
+}
+let refresh=16.7, upAfter=0, minDt=99, scale=coarse?0.6:0.8, quality=coarse?0.55:1, frameAvg=16, lastFrame=0, frameCount=0, firstDrawn=0;
+const maxScale=coarse?0.9:1;
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,2);
+  const cw=canvas.clientWidth||1, ch=canvas.clientHeight||1; const w=Math.max(2,Math.round(cw*dpr)), h=Math.max(2,Math.round(ch*dpr));
+  if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;}
+  if(glReady){const tw_=Math.max(2,Math.round(w*scale)), th=Math.max(2,Math.round(h*scale));
+    if(tw_!==texW||th!==texH){texW=tw_;texH=th;gl.bindTexture(gl.TEXTURE_2D,tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,texW,texH,0,gl.RGBA,gl.UNSIGNED_BYTE,null);gl.bindFramebuffer(gl.FRAMEBUFFER,fbo);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);}}
+  needRender=true;
+}
+addEventListener('resize',()=>{resize();$$('.plate').forEach(markScroll);if(!glReady)drawFallback();});
+
+/* composition: where the model sits inside the stage */
+function layout(){
+  const a=canvas.clientWidth/Math.max(1,canvas.clientHeight), wide=slides[cur].classList.contains('wide');
+  if(innerWidth<innerHeight) return {shift:[0,-0.035],fill:0.9,fade:[0.04,0.04,0.03,0.2],a};
+  if(innerHeight<560) return {shift:[0.02,0.05],fill:0.88,fade:[0.14,0.03,0.03,0.05],a};
+  return {shift:[wide?0.15*a:0.03,0.035],fill:wide?0.7:0.84,fade:[0.2,0.03,0.03,0.04],a};
+}
+const ZOOM=2.5; let shiftX=0.03, fillNow=0.84;
+const V={ro:[0,0,0],uu:[1,0,0],vv:[0,1,0],ww:[0,0,1],shift:[0,0]};
+const hashJS=x=>{const s=Math.sin(x*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const t0=performance.now(), frozenTime=4.0;
+function frame(now){
+  requestAnimationFrame(frame);
+  if(!glReady){pollGL();if(!glReady)return;}
+  if(document.hidden) return;
+  if(camFrom){const k=Math.min(1,(now-camT0)/camDur);const e=ease(k);
+    cam.yaw=camFrom.yaw+(camTo.yaw-camFrom.yaw)*e;cam.pitch=camFrom.pitch+(camTo.pitch-camFrom.pitch)*e;cam.R=camFrom.R+(camTo.R-camFrom.R)*e;
+    for(let i=0;i<3;i++)cam.tgt[i]=camFrom.tgt[i]+(camTo.tgt[i]-camFrom.tgt[i])*e; if(k>=1)camFrom=null; needRender=true;}
+  if(U.t<1){U.t=Math.min(1,(now-morphT0)/1500);needRender=true;}
+  runTweens(now);
+  if(!drag&&Math.abs(velYaw)>1e-4){dragYaw+=velYaw;velYaw*=0.93;needRender=true;}
+  const animate=!reduced;
+  if(!animate&&!needRender) return;
+  const time=animate?(now-t0)/1000:frozenTime;
+  const id=slides[cur].id, c=S[id];
+  if(c.path&&!(c.rl&&U.groupOn>0.5)) beadAt(now);
+  if(c.rl&&U.groupOn>0.5) rlStep(now);
+  if(id==='api') instrStep(time);
+  if(id==='inkling'&&animate){const k=Math.floor(time*1.1);U.e1=Math.floor(hashJS(k)*32);U.e2=(U.e1+3+Math.floor(hashJS(k+.5)*26))%32;}
+  if(id==='train'){const s=reduced?1:((now-enterT-900)/1000%13)/9; U.train=clamp(s,0,1); U.train=1-Math.pow(1-U.train,2);}
+  const L=layout();
+  shiftX+=(L.shift[0]-shiftX)*(reduced?1:0.08); fillNow+=(L.fill-fillNow)*(reduced?1:0.08);
+  const drift=animate?Math.sin(time*0.13)*0.1:0;
+  const yaw=cam.yaw+drift+dragYaw+pointerX*0.07, pitch=clamp(cam.pitch+dragPitch+pointerY*0.035,0.1,1.45);
+  const tanH=0.5*Math.min(1,L.a)/ZOOM; const d=cam.R/Math.sin(Math.atan(tanH*fillNow));
+  const tg=cam.tgt;
+  const cp=[tg[0]+d*Math.cos(pitch)*Math.sin(yaw), tg[1]+d*Math.sin(pitch), tg[2]+d*Math.cos(pitch)*Math.cos(yaw)];
+  // remember the view for picking
+  const ww=norm([tg[0]-cp[0],tg[1]-cp[1],tg[2]-cp[2]]), uu=norm(cross(ww,[0,1,0])), vv=cross(uu,ww);
+  V.ro=cp;V.uu=uu;V.vv=vv;V.ww=ww;V.shift=[shiftX,L.shift[1]];V.d=d;
+  const el=U.el, az=U.az; const Lv=[Math.cos(el)*Math.sin(az),Math.sin(el),Math.cos(el)*Math.cos(az)];
+  const wm=U.warm; const key=[1.72+0.1*wm,1.66-0.2*wm,1.58-0.5*wm];
+  // pass 1: the scene, at adaptive resolution
+  gl.bindFramebuffer(gl.FRAMEBUFFER,fbo); gl.viewport(0,0,texW,texH); gl.useProgram(progS);
+  gl.uniform2f(locS.uRes,texW,texH); gl.uniform1f(locS.uTime,time);
+  gl.uniform1i(locS.uFrom,U.from); gl.uniform1i(locS.uTo,U.to); gl.uniform1f(locS.uT,U.t<1?(U.t<.5?2*U.t*U.t:1-Math.pow(-2*U.t+2,2)/2):1);
+  gl.uniform3fv(locS.uCam,cp); gl.uniform3fv(locS.uTgt,tg); gl.uniform2f(locS.uShift,shiftX,L.shift[1]); gl.uniform1f(locS.uZoom,ZOOM);
+  gl.uniform3fv(locS.uL,Lv); gl.uniform3fv(locS.uKey,key);
+  gl.uniform1f(locS.uRank,U.rank); gl.uniform1f(locS.uTrain,U.train);
+  gl.uniform3fv(locS.uBead,U.bead); gl.uniform3fv(locS['uTrail[0]'],U.trail); gl.uniform1i(locS.uTrailN,U.trailN);
+  gl.uniform1f(locS.uTrailProg,(c.rl&&U.groupOn>0.5)?-2:((c.path&&!reduced)?(U.trailProg||0):99));
+  gl.uniform3fv(locS['uGroup[0]'],U.group); gl.uniform1fv(locS['uGroupR[0]'],U.groupR); gl.uniform1f(locS.uGroupOn,U.groupOn);
+  gl.uniform1f(locS.uCrystals,U.crystals); gl.uniform3fv(locS['uCk[0]'],U.ck);
+  gl.uniform1fv(locS['uBars[0]'],U.bars); gl.uniform1i(locS.uBarN,U.barN); gl.uniform1f(locS.uHi,U.hi); gl.uniform1f(locS.uHiPos,U.hiPos);
+  gl.uniform1fv(locS['uTok[0]'],U.tok); gl.uniform1f(locS.uTokHover,U.tokHover);
+  gl.uniform1f(locS.uMode,U.mode); gl.uniform1f(locS.uBeads,U.beads); gl.uniform1f(locS.uE1,U.e1); gl.uniform1f(locS.uE2,U.e2);
+  gl.uniform3f(locS.uPaper,203/255,205/255,210/255); gl.uniform4fv(locS.uFade,L.fade);
+  gl.uniform1f(locS.uFocus,d-0.3); gl.uniform1f(locS.uAper,1.25); gl.uniform1i(locS.uSteps,Math.round(54+56*quality));
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  // pass 2: depth of field, grain, present at full resolution
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null); gl.viewport(0,0,canvas.width,canvas.height); gl.useProgram(progP);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tex); gl.uniform1i(locP.uTex,0);
+  gl.uniform2f(locP.uRes,canvas.width,canvas.height); gl.uniform1f(locP.uTime,animate?time:0); gl.uniform1f(locP.uBlur,canvas.height*0.02);
+  gl.drawArrays(gl.TRIANGLES,0,3);
+  needRender=false;
+  if(firstDrawn<3&&++firstDrawn===2){canvas.classList.add('live');root.classList.add('gl-live');}
+  // adaptive resolution and step count
+  if(lastFrame){const dt=Math.min(100,now-lastFrame);frameAvg=frameAvg*0.9+dt*0.1; if(dt>3){minDt=Math.min(minDt,dt);refresh=clamp(minDt,6.9,16.7);}
+    if(animate&&++frameCount>24){
+      if(frameAvg>Math.max(25,refresh*1.45)){ upAfter=now+6000; if(scale>0.36){scale=Math.max(0.36,scale*0.86);resize();} else if(quality>0.3)quality=Math.max(0.3,quality-0.15); frameCount=0; }
+      else if(frameAvg<refresh*1.12&&now>upAfter&&U.t>=1&&!camFrom){ if(quality<1){quality=Math.min(1,quality+0.1);frameCount=-20;} else if(scale<maxScale){scale=Math.min(maxScale,scale*1.07);resize();frameCount=-30;} }
+    } }
+  lastFrame=now;
+}
+const norm=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l];};
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+
+/* picking: where does a tap land on the loss surface? */
+function pick(cx,cy){
+  const r=canvas.getBoundingClientRect(); const u=((cx-r.left)-r.width/2)/r.height-V.shift[0], v=(r.height/2-(cy-r.top))/r.height-V.shift[1];
+  const rd=norm([u*V.uu[0]+v*V.vv[0]+ZOOM*V.ww[0],u*V.uu[1]+v*V.vv[1]+ZOOM*V.ww[1],u*V.uu[2]+v*V.vv[2]+ZOOM*V.ww[2]]);
+  for(let t=Math.max(0,V.d-6);t<V.d+6;t+=0.02){const x=V.ro[0]+rd[0]*t,y=V.ro[1]+rd[1]*t,z=V.ro[2]+rd[2]*t; if(Math.hypot(x,z)<2.8&&y<=SY(x,z)) return [x,z];}
+  return null;
+}
+/* drag to turn (mouse, pen, touch); a tap drops the bead; a quick flick on touch turns the page */
+let drag=null;
+canvas.addEventListener('pointerdown',e=>{drag={id:e.pointerId,x:e.clientX,y:e.clientY,lx:e.clientX,yaw:dragYaw,pitch:dragPitch,t:performance.now(),moved:false,touch:e.pointerType==='touch'};velYaw=0;canvas.classList.add('drag');try{canvas.setPointerCapture(e.pointerId);}catch(_){}});
+canvas.addEventListener('pointermove',e=>{ if(!drag||e.pointerId!==drag.id)return;
+  const dx=e.clientX-drag.x, dy=e.clientY-drag.y; if(!drag.moved&&Math.hypot(dx,dy)<6)return; drag.moved=true;
+  dragYaw=drag.yaw-dx*0.0065; dragPitch=clamp(drag.pitch+dy*0.004,-0.45,0.6); velYaw=-(e.clientX-drag.lx)*0.0065; drag.lx=e.clientX; needRender=true;});
+function endDrag(e){ if(!drag||(e&&e.pointerId!==drag.id))return; const d=drag; drag=null; canvas.classList.remove('drag');
+  if(!e)return; const dx=e.clientX-d.x, dy=e.clientY-d.y, dt=performance.now()-d.t;
+  if(!d.moved&&dt<450){ const c=S[slides[cur].id]; if(c.path&&!(c.rl&&rlMode==='rl')){const h=pick(e.clientX,e.clientY); if(h){starts[slides[cur].id]=h;setPath(slides[cur].id);pathT0=performance.now()-500;if(slides[cur].id==='lora-rules')$('#lrOut').textContent=curLR.toFixed(2)+': '+pathVerdict();}} velYaw=0; return; }
+  if(d.touch&&dt<400&&Math.abs(dx)>70&&Math.abs(dx)>1.6*Math.abs(dy)){ dragYaw=d.yaw; dragPitch=d.pitch; velYaw=0; go(cur+(dx<0?1:-1)); return; }
+  if(reduced)velYaw=0;
+}
+canvas.addEventListener('pointerup',endDrag); canvas.addEventListener('pointercancel',()=>endDrag(null));
+addEventListener('pointermove',e=>{if(e.pointerType!=='mouse'||drag)return;pointerX=(e.clientX/innerWidth-0.5);pointerY=(e.clientY/innerHeight-0.5);});
+
+/* ---------------- first frame and fallback: the same surface as an engraved plate ---------------- */
+let fbKey='';
+function drawFallback(){
+  const fb=$('#fallback'); const W=fb.clientWidth,Hh=fb.clientHeight; if(!W||!Hh)return; const key=W+'x'+Hh; if(key===fbKey)return; fbKey=key;
+  const port=innerWidth<innerHeight;
+  const cx=W*0.5+(port?0:Hh*0.03), cy=Hh*(port?0.52:0.47), R=Math.min(W,Hh)*(port?0.36:0.33);
+  const n=56; const g=[]; for(let j=0;j<=n;j++){g[j]=[];for(let i=0;i<=n;i++){const x=-3+6*i/n,z=-3+6*j/n;g[j][i]=(x*x+z*z<=8.7)?SY(x,z):9;}}
+  const P2=(i,j)=>[cx+(-3+6*i/n)/3*R,cy+(-3+6*j/n)/3*R*0.62];
+  let paths='';
+  for(let k=-4;k<=9;k++){const L=k/7-0.5; let d='';
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++){const v=[g[j][i],g[j][i+1],g[j+1][i+1],g[j+1][i]];if(v.some(x=>x===9))continue;
+      const e=[];const edge=(a,b,pa,pb)=>{if((a<L)!==(b<L)){const t=(L-a)/(b-a);e.push([pa[0]+(pb[0]-pa[0])*t,pa[1]+(pb[1]-pa[1])*t]);}};
+      const c0=P2(i,j),c1=P2(i+1,j),c2=P2(i+1,j+1),c3=P2(i,j+1);
+      edge(v[0],v[1],c0,c1);edge(v[1],v[2],c1,c2);edge(v[2],v[3],c2,c3);edge(v[3],v[0],c3,c0);
+      if(e.length>=2)d+=`M${e[0][0].toFixed(1)} ${e[0][1].toFixed(1)}L${e[1][0].toFixed(1)} ${e[1][1].toFixed(1)}`;}
+    if(d)paths+=`<path d="${d}" fill="none" stroke="#7D1F35" stroke-width="${((k%5)+5)%5===0?1.5:0.8}" opacity=".6"/>`;}
+  const pth=descend(0.5,START[0],START[1],40); const X=p=>cx+p[0]/3*R, Y=p=>cy+p[1]/3*R*0.62;
+  const path=pth.map((p,i)=>(i?'L':'M')+X(p).toFixed(1)+' '+Y(p).toFixed(1)).join(''); const end=pth[pth.length-1];
+  fb.innerHTML=`<svg viewBox="0 0 ${W} ${Hh}" xmlns="http://www.w3.org/2000/svg"><defs><radialGradient id="fbs" cx="50%" cy="50%" r="50%"><stop offset=".55" stop-color="#16181E" stop-opacity=".22"/><stop offset="1" stop-color="#16181E" stop-opacity="0"/></radialGradient><linearGradient id="fbp" x1="0" x2="1"><stop offset="0" stop-color="#E9E8E5"/><stop offset="1" stop-color="#B9BBC2"/></linearGradient></defs>
+  <ellipse cx="${cx+R*0.12}" cy="${cy+R*0.5}" rx="${R*1.5}" ry="${R*0.62}" fill="url(#fbs)"/>
+  <path d="M${cx-R*1.08} ${cy+R*0.3} v${R*0.14} a${R*1.08} ${R*0.67} 0 0 0 ${R*2.16} 0 v${-R*0.14} z" fill="url(#fbp)"/>
+  <path d="M${cx-R} ${cy} v${R*0.3} a${R} ${R*0.62} 0 0 0 ${R*2} 0 v${-R*0.3} z" fill="url(#fbp)"/>
+  <ellipse cx="${cx}" cy="${cy}" rx="${R}" ry="${R*0.62}" fill="#E4E3E0" stroke="#16181E" stroke-opacity=".25"/>${paths}
+  <path d="${path}" fill="none" stroke="#16181E" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="${X(end)}" cy="${Y(end)-5}" r="${Math.max(5,R*0.035)}" fill="#8F939C" stroke="#16181E" stroke-opacity=".5"/></svg>`;
+}
+
+/* ---------------- boot ---------------- */
+drawFallback();
+const start=Math.max(0,slides.findIndex(s=>'#'+s.id===location.hash));
+go(start,true);
+if(/[?&]nogl\b/.test(location.search)||!initGL()) fail();
+setTimeout(()=>{if(!glReady)root.classList.add('fb-on');},350);
+requestAnimationFrame(frame);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{$$('.plate').forEach(markScroll);});
+window.__deck={go,get cur(){return cur},N,glOK:()=>glReady,dbg:()=>({scale:+scale.toFixed(2),quality:+quality.toFixed(2),ms:+frameAvg.toFixed(1),tex:texW+'x'+texH})};
+})();
+</script>
+
+</body>
+</html>
